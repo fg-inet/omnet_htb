@@ -30,9 +30,11 @@ module HTBQueue extends CompoundPacketQueue
 {
     parameters:
         int numQueues;
+        xml htbTreeConfig = default(xml("<config></config>")); // The htb tree structure
     submodules:
         classifier: <default("HTBClassifier")> like IPacketClassifier {
             parameters:
+                htbTreeConfig = default(htbTreeConfig);
                 @display("p=100,100");
         }
         queue[numQueues]: <default("PacketQueue")> like IPacketQueue {
@@ -42,6 +44,7 @@ module HTBQueue extends CompoundPacketQueue
         }
         scheduler: <default("HTBScheduler")> like IPacketScheduler {
             parameters:
+                htbTreeConfig = default(htbTreeConfig);
                 @display("p=550,100");
         }
     connections:

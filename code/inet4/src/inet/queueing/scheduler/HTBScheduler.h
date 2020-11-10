@@ -20,6 +20,7 @@
 
 #include "inet/queueing/base/PacketSchedulerBase.h"
 #include "inet/queueing/contract/IPacketCollection.h"
+#include "inet/common/XMLUtils.h"
 
 #define CAN_SEND = 0;
 #define MAY_BORROW = 1;
@@ -35,6 +36,7 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
     std::vector<IPacketCollection *> collections;
 
     struct htbClass {
+        const char* name = "";
         int assignedRate = 0;
         int ceilingRate = 0;
         int burstSize = 0;
@@ -58,7 +60,13 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
         long queueLevel = 0;
     };
 
+    cXMLElement *htbConfig = nullptr;
+
     std::vector<htbClass*> classes;
+
+    htbClass* rootClass;
+    std::vector<htbClass*> innerClasses;
+    std::vector<htbClass*> leafClasses;
 
 
   protected:
@@ -82,6 +90,7 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
     void htbEnqueue(int index, Packet *packet);
     void htbDequeue(int index);
     htbClass *htbInitializeNewClass();
+    void printClass(htbClass *cl);
 
 };
 

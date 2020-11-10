@@ -27,5 +27,6 @@ import inet.queueing.contract.IPacketScheduler;
 simple HTBScheduler extends PacketSchedulerBase like IPacketScheduler
 {
     parameters:
+        xml htbTreeConfig; // The htb tree structure
         @class(HTBScheduler);
 }

@@ -15,7 +15,10 @@
 // along with this program; if not, see http://www.gnu.org/licenses/.
 //
 
+#include <stdlib.h>
+#include <string.h>
 #include "inet/queueing/scheduler/HTBScheduler.h"
+#include "inet/common/XMLUtils.h"
 
 namespace inet {
 namespace queueing {
@@ -25,6 +28,27 @@ Define_Module(HTBScheduler);
 HTBScheduler::htbClass *HTBScheduler::htbInitializeNewClass() {
     htbClass *newClass = new htbClass();
     return newClass;
+}
+
+void HTBScheduler::printClass(htbClass *cl) {
+    EV << "Class: " << cl->name << endl;
+    EV << "   - assigned rate: " << cl->assignedRate;
+    EV << "   - ceiling rate: " << cl->ceilingRate << endl;
+    EV << "   - burst size: " << cl->burstSize << endl;
+    EV << "   - cburst size: " << cl->cburstSize << endl;
+//    std::vector<int> priority;
+    EV << "   - quantum: " << cl->quantum << endl;
+    EV << "   - mbuffer: " << cl->mbuffer << endl;
+    EV << "   - chackpoint time: " << cl->checkpointTime << endl;
+    EV << "   - level: " << cl->level << endl;
+    EV << "   - number of children: " << cl->numChildren << endl;
+    if (cl->parent != NULL) {
+        EV << "   - parent class name: " << cl->parent->name << endl;
+    }
+    EV << "   - current tokens: " << cl->tokens << endl;
+    EV << "   - current ctokens: " << cl->ctokens << endl;
+    EV << "   - current class mode: " << cl->mode << endl;
+    EV << "   - current queue level: " << cl->queueLevel << endl;
 }
 
 void HTBScheduler::initialize(int stage)
@@ -37,6 +61,61 @@ void HTBScheduler::initialize(int stage)
             collections.push_back(dynamic_cast<IPacketCollection *>(provider)); // Get pointers to queues
             classes.push_back(htbInitializeNewClass()); // Initialize the dummy test vector
         }
+        htbConfig = par("htbTreeConfig");
+
+        cXMLElementList classes = htbConfig->getChildren();//  ->getChildrenByTagName("root");
+        for (auto & oneClass : classes) {
+            htbClass* newClass = new htbClass();
+            newClass->name = oneClass->getAttribute("id");
+            const char* parentName = oneClass->getFirstChildWithTag("parentId")->getNodeValue();
+
+            int rate = atoi(oneClass->getFirstChildWithTag("rate")->getNodeValue());
+            newClass->assignedRate = rate;
+            int ceil = atoi(oneClass->getFirstChildWithTag("ceil")->getNodeValue());
+            newClass->ceilingRate = ceil;
+            int burst = atoi(oneClass->getFirstChildWithTag("burst")->getNodeValue());
+            newClass->burstSize = burst;
+            int cburst = atoi(oneClass->getFirstChildWithTag("cburst")->getNodeValue());
+            newClass->cburstSize = cburst;
+            int level = atoi(oneClass->getFirstChildWithTag("level")->getNodeValue());
+            newClass->level = level;
+            int quantum = atoi(oneClass->getFirstChildWithTag("quantum")->getNodeValue());
+            newClass->quantum = quantum;
+            int mbuffer = atoi(oneClass->getFirstChildWithTag("mbuffer")->getNodeValue());
+            newClass->mbuffer = mbuffer;
+            newClass->checkpointTime = simTime();
+            newClass->tokens = burst;
+            newClass->ctokens = cburst;
+
+            if (strstr(newClass->name,"inner")) {
+                newClass->parent = rootClass;
+                rootClass->numChildren += 1;
+                innerClasses.push_back(newClass);
+            } else if (strstr(newClass->name,"leaf")) {
+                for (auto innerCl : innerClasses) {
+                    if (!strcmp(innerCl->name, parentName)) {
+                        newClass->parent = innerCl;
+                        innerCl->numChildren += 1;
+                        leafClasses.push_back(newClass);
+                    }
+                }
+            } else if (strstr(newClass->name,"root")) {
+                newClass->parent = NULL;
+                rootClass = newClass;
+            } else {
+                newClass->parent = NULL;
+            }
+
+            printClass(newClass);
+
+
+
+
+        }
+
+        printClass(rootClass);
+
+
     }
     // TODO: Figure out in which initialization stage we should initialize the following stuff :)
     // TODO: Initialize and prepare the HTB structure

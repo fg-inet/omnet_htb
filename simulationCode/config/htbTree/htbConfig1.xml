@@ -1,0 +1,74 @@
+<config>
+	<class id="root">
+		<parentId>NULL</parentId>
+		<rate type="int">1000</rate>
+		<ceil type="int">2000</ceil>
+		<burst type="int">1000</burst>
+		<cburst type="int">2000</cburst>
+		<level type="int">2</level>
+		<quantum type="int">1600</quantum> <!-- No automatic quantum calculation. Should be slightly above mtu -->
+		<mbuffer type="int">60</mbuffer> <!-- 60 seconds -->
+	</class>
+	<class id="inner1">
+		<parentId>root</parentId>
+		<rate type="int">800</rate>
+		<ceil type="int">1600</ceil>
+		<burst type="int">800</burst>
+		<cburst type="int">1600</cburst>
+		<level type="int">1</level>
+		<quantum type="int">1600</quantum> <!-- No automatic quantum calculation. Should be slightly above mtu -->
+		<mbuffer type="int">60</mbuffer> <!-- 60 seconds -->
+	</class>
+	<class id="inner2">
+		<parentId>root</parentId>
+		<rate type="int">200</rate>
+		<ceil type="int">400</ceil>
+		<burst type="int">200</burst>
+		<cburst type="int">400</cburst>
+		<level type="int">1</level>
+		<quantum type="int">1600</quantum> <!-- No automatic quantum calculation. Should be slightly above mtu -->
+		<mbuffer type="int">60</mbuffer> <!-- 60 seconds -->
+	</class>
+	<class id="leaf1">
+		<parentId>inner1</parentId>
+		<rate type="int">500</rate>
+		<ceil type="int">1000</ceil>
+		<burst type="int">500</burst>
+		<cburst type="int">1000</cburst>
+		<level type="int">0</level>
+		<quantum type="int">1600</quantum> <!-- No automatic quantum calculation. Should be slightly above mtu -->
+		<mbuffer type="int">60</mbuffer> <!-- 60 seconds -->
+	</class>
+	<class id="leaf2">
+		<parentId>inner1</parentId>
+		<rate type="int">300</rate>
+		<ceil type="int">600</ceil>
+		<burst type="int">300</burst>
+		<cburst type="int">600</cburst>
+		<level type="int">0</level>
+		<quantum type="int">1600</quantum> <!-- No automatic quantum calculation. Should be slightly above mtu -->
+		<mbuffer type="int">60</mbuffer> <!-- 60 seconds -->
+	</class>
+	<class id="leaf3">
+		<parentId>inner2</parentId>
+		<rate type="int">100</rate>
+		<ceil type="int">200</ceil>
+		<burst type="int">100</burst>
+		<cburst type="int">200</cburst>
+		<level type="int">0</level>
+		<quantum type="int">1600</quantum> <!-- No automatic quantum calculation. Should be slightly above mtu -->
+		<mbuffer type="int">60</mbuffer> <!-- 60 seconds -->
+	</class>
+	<class id="leaf4">
+		<parentId>inner2</parentId>
+		<rate type="int">100</rate>
+		<ceil type="int">200</ceil>
+		<burst type="int">100</burst>
+		<cburst type="int">200</cburst>
+		<level type="int">0</level>
+		<quantum type="int">1600</quantum> <!-- No automatic quantum calculation. Should be slightly above mtu -->
+		<mbuffer type="int">60</mbuffer> <!-- 60 seconds -->
+	</class>
+	<!--Id's of leaf nodes need to correspond with ids of the queues-->
+</config>
+
