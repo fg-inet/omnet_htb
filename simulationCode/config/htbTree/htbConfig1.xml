@@ -36,8 +36,10 @@
 		<burst type="int">500</burst>
 		<cburst type="int">1000</cburst>
 		<level type="int">0</level>
+		<priority>1</priority>
 		<quantum type="int">1600</quantum> <!-- No automatic quantum calculation. Should be slightly above mtu -->
 		<mbuffer type="int">60</mbuffer> <!-- 60 seconds -->
+		<queueNum type="int">0</queueNum>
 	</class>
 	<class id="leaf2">
 		<parentId>inner1</parentId>
@@ -46,18 +48,22 @@
 		<burst type="int">300</burst>
 		<cburst type="int">600</cburst>
 		<level type="int">0</level>
+		<priority>1</priority>
 		<quantum type="int">1600</quantum> <!-- No automatic quantum calculation. Should be slightly above mtu -->
 		<mbuffer type="int">60</mbuffer> <!-- 60 seconds -->
+		<queueNum type="int">1</queueNum>
 	</class>
 	<class id="leaf3">
-		<parentId>inner2</parentId>
+		<parentId>inner1</parentId>
 		<rate type="int">100</rate>
 		<ceil type="int">200</ceil>
 		<burst type="int">100</burst>
 		<cburst type="int">200</cburst>
 		<level type="int">0</level>
+		<priority>2</priority>
 		<quantum type="int">1600</quantum> <!-- No automatic quantum calculation. Should be slightly above mtu -->
 		<mbuffer type="int">60</mbuffer> <!-- 60 seconds -->
+		<queueNum type="int">2</queueNum>
 	</class>
 	<class id="leaf4">
 		<parentId>inner2</parentId>
@@ -66,8 +72,22 @@
 		<burst type="int">100</burst>
 		<cburst type="int">200</cburst>
 		<level type="int">0</level>
+		<priority>1</priority>
 		<quantum type="int">1600</quantum> <!-- No automatic quantum calculation. Should be slightly above mtu -->
 		<mbuffer type="int">60</mbuffer> <!-- 60 seconds -->
+		<queueNum type="int">3</queueNum>
+	</class>
+	<class id="leaf5">
+		<parentId>inner2</parentId>
+		<rate type="int">100</rate>
+		<ceil type="int">200</ceil>
+		<burst type="int">100</burst>
+		<cburst type="int">200</cburst>
+		<level type="int">0</level>
+		<priority>0</priority>
+		<quantum type="int">1600</quantum> <!-- No automatic quantum calculation. Should be slightly above mtu -->
+		<mbuffer type="int">60</mbuffer> <!-- 60 seconds -->
+		<queueNum type="int">4</queueNum>
 	</class>
 	<!--Id's of leaf nodes need to correspond with ids of the queues-->
 </config>

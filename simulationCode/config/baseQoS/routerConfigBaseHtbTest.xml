@@ -1,0 +1,24 @@
+<config>
+	<!--Hosts address configurations-->
+	<interface hosts="hostVID[0]" names="ppp0" address="10.1.0.0" netmask="255.255.255.252"/>
+	<interface hosts="hostLVD[0]" names="ppp0" address="10.2.0.0" netmask="255.255.255.252"/>
+	<interface hosts="hostFDO[0]" names="ppp0" address="10.3.0.0" netmask="255.255.255.252"/>
+	<interface hosts="hostSSH[0]" names="ppp0" address="10.4.0.0" netmask="255.255.255.252"/>
+	<interface hosts="hostVIP[0]" names="ppp0" address="10.5.0.0" netmask="255.255.255.252"/>
+	
+	<interface hosts="router0" towards="hostVID[*]" address="10.1.1.x"/>
+	<interface hosts="router0" towards="hostFDO[*]" address="10.3.1.x"/>
+	<interface hosts="router0" towards="hostSSH[*]" address="10.4.1.x"/>
+	<interface hosts="router0" towards="hostVIP[*]" address="10.5.1.x"/>
+	<interface hosts="router0" towards="hostLVD[*]" address="10.2.1.x"/>
+	
+	<!--Server address configurations-->
+	<interface hosts="serverVID" address="10.6.11.5"/>
+	<interface hosts="serverLVD" address="10.6.12.5"/>
+	<interface hosts="serverFDO" address="10.6.13.5"/>
+	<interface hosts="serverSSH" address="10.6.14.5"/>
+	<interface hosts="serverVIP" address="10.6.15.5"/>
+	
+	<interface hosts='**' address='10.x.x.x' netmask='255.x.x.x'/>
+</config>
+

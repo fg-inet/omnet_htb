@@ -22,18 +22,23 @@
 #include "inet/queueing/contract/IPacketCollection.h"
 #include "inet/common/XMLUtils.h"
 
-#define CAN_SEND = 0;
-#define MAY_BORROW = 1;
-#define CANT_SEND = 2;
-
 
 namespace inet {
 namespace queueing {
+
+#define CAN_SEND 0;
+#define MAY_BORROW 1;
+#define CANT_SEND 2;
+
+#define HTB_MAX_NUM_PRIO 8;
 
 class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollection
 {
   protected:
     std::vector<IPacketCollection *> collections;
+
+    static const int maxHtbDepth = 8;
+    static const int maxHtbNumPrio = 8;
 
     struct htbClass {
         const char* name = "";
@@ -41,7 +46,6 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
         int ceilingRate = 0;
         int burstSize = 0;
         int cburstSize = 0;
-        std::vector<int> priority;
 
         int quantum = 0;
         long mbuffer = 0;
@@ -57,12 +61,31 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
 
         int mode = 0;
 
-        long queueLevel = 0;
+        bool activePriority[maxHtbNumPrio] = { false };
+
+        struct htbClassLeaf {
+            int priority;
+            int deficit[maxHtbDepth];
+            long queueLevel;
+            int queueId;
+        } leaf;
+        struct htbClassInner {
+            std::set<htbClass*> innerFeeds[maxHtbNumPrio];
+            htbClass* nextToDequeue[maxHtbNumPrio];
+        } inner;
     };
+
+    struct htbLevel {
+        std::set<htbClass*> selfFeeds[maxHtbNumPrio];
+        htbClass* nextToDequeue[maxHtbNumPrio];
+        std::set<htbClass*> waitingClasses;
+    };
+
+    htbLevel levels[maxHtbDepth];
 
     cXMLElement *htbConfig = nullptr;
 
-    std::vector<htbClass*> classes;
+//    std::vector<htbClass*> classes;
 
     htbClass* rootClass;
     std::vector<htbClass*> innerClasses;
@@ -89,8 +112,9 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
 
     void htbEnqueue(int index, Packet *packet);
     void htbDequeue(int index);
-    htbClass *htbInitializeNewClass();
+//    htbClass *htbInitializeNewClass();
     void printClass(htbClass *cl);
+    htbClass *createAndAddNewClass(cXMLElement* oneClass, int queueId);
 
 };
 

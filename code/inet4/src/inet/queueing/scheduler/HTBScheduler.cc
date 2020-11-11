@@ -25,10 +25,10 @@ namespace queueing {
 
 Define_Module(HTBScheduler);
 
-HTBScheduler::htbClass *HTBScheduler::htbInitializeNewClass() {
-    htbClass *newClass = new htbClass();
-    return newClass;
-}
+//HTBScheduler::htbClass *HTBScheduler::htbInitializeNewClass() {
+//    htbClass *newClass = new htbClass();
+//    return newClass;
+//}
 
 void HTBScheduler::printClass(htbClass *cl) {
     EV << "Class: " << cl->name << endl;
@@ -36,7 +36,6 @@ void HTBScheduler::printClass(htbClass *cl) {
     EV << "   - ceiling rate: " << cl->ceilingRate << endl;
     EV << "   - burst size: " << cl->burstSize << endl;
     EV << "   - cburst size: " << cl->cburstSize << endl;
-//    std::vector<int> priority;
     EV << "   - quantum: " << cl->quantum << endl;
     EV << "   - mbuffer: " << cl->mbuffer << endl;
     EV << "   - chackpoint time: " << cl->checkpointTime << endl;
@@ -48,7 +47,60 @@ void HTBScheduler::printClass(htbClass *cl) {
     EV << "   - current tokens: " << cl->tokens << endl;
     EV << "   - current ctokens: " << cl->ctokens << endl;
     EV << "   - current class mode: " << cl->mode << endl;
-    EV << "   - current queue level: " << cl->queueLevel << endl;
+
+    if (strstr(cl->name,"leaf")) {
+        EV << "   - leaf priority: " << cl->leaf.priority << endl;
+        EV << "   - current queue level: " << cl->leaf.queueLevel << endl;
+        EV << "   - queue num: " << cl->leaf.queueId << endl;
+    }
+}
+
+HTBScheduler::htbClass *HTBScheduler::createAndAddNewClass(cXMLElement* oneClass, int queueId) {
+    htbClass* newClass = new htbClass();
+    newClass->name = oneClass->getAttribute("id");
+    const char* parentName = oneClass->getFirstChildWithTag("parentId")->getNodeValue();
+
+    int rate = atoi(oneClass->getFirstChildWithTag("rate")->getNodeValue());
+    newClass->assignedRate = rate;
+    int ceil = atoi(oneClass->getFirstChildWithTag("ceil")->getNodeValue());
+    newClass->ceilingRate = ceil;
+    int burst = atoi(oneClass->getFirstChildWithTag("burst")->getNodeValue());
+    newClass->burstSize = burst;
+    int cburst = atoi(oneClass->getFirstChildWithTag("cburst")->getNodeValue());
+    newClass->cburstSize = cburst;
+    int level = atoi(oneClass->getFirstChildWithTag("level")->getNodeValue());
+    newClass->level = level;
+    int quantum = atoi(oneClass->getFirstChildWithTag("quantum")->getNodeValue());
+    newClass->quantum = quantum;
+    int mbuffer = atoi(oneClass->getFirstChildWithTag("mbuffer")->getNodeValue());
+    newClass->mbuffer = mbuffer;
+    newClass->checkpointTime = simTime();
+    newClass->tokens = burst;
+    newClass->ctokens = cburst;
+
+    if (strstr(newClass->name,"inner")) {
+        newClass->parent = rootClass;
+        rootClass->numChildren += 1;
+        innerClasses.push_back(newClass);
+    } else if (strstr(newClass->name,"leaf")) {
+        for (auto innerCl : innerClasses) {
+            if (!strcmp(innerCl->name, parentName)) {
+                newClass->parent = innerCl;
+                innerCl->numChildren += 1;
+                leafClasses.push_back(newClass);
+            }
+        }
+        memset(newClass->leaf.deficit, 0, sizeof(newClass->leaf.deficit));
+        newClass->leaf.queueLevel = 0;
+        newClass->leaf.queueId = atoi(oneClass->getFirstChildWithTag("queueNum")->getNodeValue());
+        newClass->leaf.priority = atoi(oneClass->getFirstChildWithTag("priority")->getNodeValue());
+    } else if (strstr(newClass->name,"root")) {
+        newClass->parent = NULL;
+        rootClass = newClass;
+    } else {
+        newClass->parent = NULL;
+    }
+    return newClass;
 }
 
 void HTBScheduler::initialize(int stage)
@@ -59,65 +111,19 @@ void HTBScheduler::initialize(int stage)
     if (stage == INITSTAGE_LOCAL) {
         for (auto provider : providers) {
             collections.push_back(dynamic_cast<IPacketCollection *>(provider)); // Get pointers to queues
-            classes.push_back(htbInitializeNewClass()); // Initialize the dummy test vector
+//            classes.push_back(htbInitializeNewClass()); // Initialize the dummy test vector
         }
         htbConfig = par("htbTreeConfig");
 
         cXMLElementList classes = htbConfig->getChildren();//  ->getChildrenByTagName("root");
         for (auto & oneClass : classes) {
-            htbClass* newClass = new htbClass();
-            newClass->name = oneClass->getAttribute("id");
-            const char* parentName = oneClass->getFirstChildWithTag("parentId")->getNodeValue();
-
-            int rate = atoi(oneClass->getFirstChildWithTag("rate")->getNodeValue());
-            newClass->assignedRate = rate;
-            int ceil = atoi(oneClass->getFirstChildWithTag("ceil")->getNodeValue());
-            newClass->ceilingRate = ceil;
-            int burst = atoi(oneClass->getFirstChildWithTag("burst")->getNodeValue());
-            newClass->burstSize = burst;
-            int cburst = atoi(oneClass->getFirstChildWithTag("cburst")->getNodeValue());
-            newClass->cburstSize = cburst;
-            int level = atoi(oneClass->getFirstChildWithTag("level")->getNodeValue());
-            newClass->level = level;
-            int quantum = atoi(oneClass->getFirstChildWithTag("quantum")->getNodeValue());
-            newClass->quantum = quantum;
-            int mbuffer = atoi(oneClass->getFirstChildWithTag("mbuffer")->getNodeValue());
-            newClass->mbuffer = mbuffer;
-            newClass->checkpointTime = simTime();
-            newClass->tokens = burst;
-            newClass->ctokens = cburst;
-
-            if (strstr(newClass->name,"inner")) {
-                newClass->parent = rootClass;
-                rootClass->numChildren += 1;
-                innerClasses.push_back(newClass);
-            } else if (strstr(newClass->name,"leaf")) {
-                for (auto innerCl : innerClasses) {
-                    if (!strcmp(innerCl->name, parentName)) {
-                        newClass->parent = innerCl;
-                        innerCl->numChildren += 1;
-                        leafClasses.push_back(newClass);
-                    }
-                }
-            } else if (strstr(newClass->name,"root")) {
-                newClass->parent = NULL;
-                rootClass = newClass;
-            } else {
-                newClass->parent = NULL;
-            }
-
+            htbClass* newClass = createAndAddNewClass(oneClass, 0);
             printClass(newClass);
-
-
-
-
         }
-
         printClass(rootClass);
 
 
     }
-    // TODO: Figure out in which initialization stage we should initialize the following stuff :)
     // TODO: Initialize and prepare the HTB structure
     // TODO: Read in the XML with tree configuration
     // TODO: Initialize the class tree here
@@ -192,17 +198,24 @@ void HTBScheduler::printTest() {
 
 void HTBScheduler::htbEnqueue(int index, Packet *packet) {
     int packetLen = packet->getByteLength();
-    classes.at(index)->queueLevel += packetLen;
-    EV_INFO << "HTBScheduler: Bytes in queue at index " << index << " = " << classes.at(index)->queueLevel << endl;
+    EV_INFO << "HTBScheduler: htbEnqueue " << index << "; Enqueue " << packetLen << " bytes." << endl;
+    htbClass *currLeaf = leafClasses.at(index);
+    currLeaf->leaf.queueLevel += packetLen;
+    printClass(currLeaf);
+
+//    EV_INFO << "HTBScheduler: Bytes in queue at index " << index << " = " << leafClasses.at(index)->type.leaf.queueLevel << endl;
     return;
 }
 
 void HTBScheduler::htbDequeue(int index) {
     Packet *thePacketToPop = providers[index]->canPopPacket();
-    classes.at(index)->checkpointTime = SimTime();
+    htbClass *currLeaf = leafClasses.at(index);
+    currLeaf->checkpointTime = SimTime();
     int packetLen = thePacketToPop->getByteLength();
-    classes.at(index)->queueLevel -= packetLen;
-    EV_INFO << "HTBScheduler: Bytes in queue at index " << index << " = " << classes.at(index)->queueLevel << endl;
+    EV_INFO << "HTBScheduler: htbDequeue " << index << "; Dequeue " << packetLen << " bytes." << endl;
+    currLeaf->leaf.queueLevel -= packetLen;
+    printClass(currLeaf);
+//    EV_INFO << "HTBScheduler: Bytes in queue at index " << index << " = " << leafClasses.at(index)->type.leaf.queueLevel << endl;
     return;
 }
 
