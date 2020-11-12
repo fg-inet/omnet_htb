@@ -32,7 +32,7 @@ Define_Module(HTBScheduler);
 
 void HTBScheduler::printClass(htbClass *cl) {
     EV << "Class: " << cl->name << endl;
-    EV << "   - assigned rate: " << cl->assignedRate;
+    EV << "   - assigned rate: " << cl->assignedRate << endl;
     EV << "   - ceiling rate: " << cl->ceilingRate << endl;
     EV << "   - burst size: " << cl->burstSize << endl;
     EV << "   - cburst size: " << cl->cburstSize << endl;
@@ -47,6 +47,16 @@ void HTBScheduler::printClass(htbClass *cl) {
     EV << "   - current tokens: " << cl->tokens << endl;
     EV << "   - current ctokens: " << cl->ctokens << endl;
     EV << "   - current class mode: " << cl->mode << endl;
+
+    char actPrios[2*maxHtbNumPrio+1];
+
+    for (int i = 0; i < maxHtbNumPrio; i++) {
+        actPrios[2*i] = cl->activePriority[i] ? '1' : '0';
+        actPrios[2*i+1] = ';';
+    }
+    actPrios[2*maxHtbNumPrio] = '\0';
+
+    EV << "   - active priorities: " << actPrios << endl;
 
     if (strstr(cl->name,"leaf")) {
         EV << "   - leaf priority: " << cl->leaf.priority << endl;
@@ -122,7 +132,6 @@ void HTBScheduler::initialize(int stage)
         }
         printClass(rootClass);
 
-
     }
     // TODO: Initialize and prepare the HTB structure
     // TODO: Read in the XML with tree configuration
@@ -196,11 +205,28 @@ void HTBScheduler::printTest() {
     return;
 }
 
+
+void HTBScheduler::activateClass(htbClass *cl, int priority) {
+    if (!cl->activePriority[priority]) {
+        cl->activePriority[priority] = true;
+        levels[cl->level].selfFeeds->insert(cl);
+    }
+}
+
+void HTBScheduler::deactivateClass(htbClass *cl, int priority) {
+    if (cl->activePriority[priority]) {
+        cl->activePriority[priority] = false;
+        levels[cl->level].selfFeeds[priority].erase(cl);
+        levels[cl->level].waitingClasses.erase(cl);
+    }
+}
+
 void HTBScheduler::htbEnqueue(int index, Packet *packet) {
     int packetLen = packet->getByteLength();
     EV_INFO << "HTBScheduler: htbEnqueue " << index << "; Enqueue " << packetLen << " bytes." << endl;
     htbClass *currLeaf = leafClasses.at(index);
     currLeaf->leaf.queueLevel += packetLen;
+    activateClass(currLeaf, currLeaf->leaf.priority);
     printClass(currLeaf);
 
 //    EV_INFO << "HTBScheduler: Bytes in queue at index " << index << " = " << leafClasses.at(index)->type.leaf.queueLevel << endl;
@@ -214,6 +240,10 @@ void HTBScheduler::htbDequeue(int index) {
     int packetLen = thePacketToPop->getByteLength();
     EV_INFO << "HTBScheduler: htbDequeue " << index << "; Dequeue " << packetLen << " bytes." << endl;
     currLeaf->leaf.queueLevel -= packetLen;
+
+    if (currLeaf->leaf.queueLevel == 0) {
+        deactivateClass(currLeaf, currLeaf->leaf.priority);
+    }
     printClass(currLeaf);
 //    EV_INFO << "HTBScheduler: Bytes in queue at index " << index << " = " << leafClasses.at(index)->type.leaf.queueLevel << endl;
     return;

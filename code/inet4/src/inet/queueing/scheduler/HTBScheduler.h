@@ -115,6 +115,8 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
 //    htbClass *htbInitializeNewClass();
     void printClass(htbClass *cl);
     htbClass *createAndAddNewClass(cXMLElement* oneClass, int queueId);
+    void activateClass(htbClass *cl, int priority);
+    void deactivateClass(htbClass *cl, int priority);
 
 };
 
