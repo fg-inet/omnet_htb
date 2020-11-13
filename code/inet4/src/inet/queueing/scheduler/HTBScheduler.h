@@ -59,7 +59,7 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
         long tokens = 0;
         long ctokens = 0;
 
-        int mode = 0;
+        int mode = CAN_SEND;
 
         bool activePriority[maxHtbNumPrio] = { false };
 
@@ -76,12 +76,16 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
     };
 
     struct htbLevel {
+        unsigned int levelId;
         std::set<htbClass*> selfFeeds[maxHtbNumPrio];
         htbClass* nextToDequeue[maxHtbNumPrio];
         std::set<htbClass*> waitingClasses;
     };
 
-    htbLevel levels[maxHtbDepth];
+
+
+    htbLevel* levels[maxHtbDepth];
+  // std::vector<htbLevel*> levels;
 
     cXMLElement *htbConfig = nullptr;
 
@@ -114,9 +118,17 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
     void htbDequeue(int index);
 //    htbClass *htbInitializeNewClass();
     void printClass(htbClass *cl);
+    void printLevel(htbLevel *level, int index);
+    void printInner(htbClass *cl);
     htbClass *createAndAddNewClass(cXMLElement* oneClass, int queueId);
     void activateClass(htbClass *cl, int priority);
     void deactivateClass(htbClass *cl, int priority);
+
+    // TODO: Next methods for accounting!
+    void updateClassMode(htbClass *cl, simtime_t diff); //TODO: Marija
+    void accountTokens(htbClass *cl, int bytes, simtime_t diff); //TODO: Marija
+    void accountCTokens(htbClass *cl, int bytes, simtime_t diff); //TODO: Marija
+    void chargeClass(htbClass *leafCl, int borrowLevel); //TODO: Marcin
 
 };
 

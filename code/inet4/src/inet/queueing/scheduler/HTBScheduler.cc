@@ -113,6 +113,10 @@ HTBScheduler::htbClass *HTBScheduler::createAndAddNewClass(cXMLElement* oneClass
     return newClass;
 }
 
+
+
+
+
 void HTBScheduler::initialize(int stage)
 {
     // This was here from the priority scheduler and I think is still needed.
@@ -131,6 +135,13 @@ void HTBScheduler::initialize(int stage)
             printClass(newClass);
         }
         printClass(rootClass);
+
+        for (int i=0;i<maxHtbDepth; i++){
+            levels[i]=new htbLevel();
+            levels[i]->levelId = i;
+        }
+
+
 
     }
     // TODO: Initialize and prepare the HTB structure
@@ -209,15 +220,17 @@ void HTBScheduler::printTest() {
 void HTBScheduler::activateClass(htbClass *cl, int priority) {
     if (!cl->activePriority[priority]) {
         cl->activePriority[priority] = true;
-        levels[cl->level].selfFeeds->insert(cl);
+        htbLevel *lvl = levels[cl->level];
+        lvl->selfFeeds[priority].insert(cl);
     }
 }
 
 void HTBScheduler::deactivateClass(htbClass *cl, int priority) {
     if (cl->activePriority[priority]) {
         cl->activePriority[priority] = false;
-        levels[cl->level].selfFeeds[priority].erase(cl);
-        levels[cl->level].waitingClasses.erase(cl);
+        htbLevel *lvl =  levels[cl->level];
+        lvl->selfFeeds[priority].erase(cl);
+        lvl->waitingClasses.erase(cl);
     }
 }
 
@@ -228,6 +241,7 @@ void HTBScheduler::htbEnqueue(int index, Packet *packet) {
     currLeaf->leaf.queueLevel += packetLen;
     activateClass(currLeaf, currLeaf->leaf.priority);
     printClass(currLeaf);
+    printLevel(levels[currLeaf->level], currLeaf->level);
 
 //    EV_INFO << "HTBScheduler: Bytes in queue at index " << index << " = " << leafClasses.at(index)->type.leaf.queueLevel << endl;
     return;
@@ -245,10 +259,71 @@ void HTBScheduler::htbDequeue(int index) {
         deactivateClass(currLeaf, currLeaf->leaf.priority);
     }
     printClass(currLeaf);
+    printLevel(levels[currLeaf->level], currLeaf->level);
+//    printInner(currLeaf);
 //    EV_INFO << "HTBScheduler: Bytes in queue at index " << index << " = " << leafClasses.at(index)->type.leaf.queueLevel << endl;
     return;
 }
 
+void HTBScheduler::printLevel(htbLevel *level, int index) {
+//    EV << "Self feeds for Level:  " << std::distance(std::find(std::begin(levels), std::end(levels), level),levels) << endl;
+    EV << "Self feeds for Level:  " << level->levelId << endl;
+    for (int i = 0; i < maxHtbNumPrio; i++) {
+        std::string printSet = "";
+        for (auto & elem : level->selfFeeds[i]){
+            printSet.append(elem->name);
+            printSet.append(" ;");
+        }
+        printSet.append(" Next to dequeue: ");
+        if (level->nextToDequeue[i] != NULL) {
+            printSet.append(level->nextToDequeue[i]->name);
+        } else {
+            printSet.append("None");
+        }
+        EV << "   - Self feed for priority " << i  << ": " << printSet << endl;
+    }
+}
+
+void HTBScheduler::printInner(htbClass *cl) {
+    EV << "Inner feeds for Inner Class:  " << cl->name << endl;
+    for (int i = 0; i < maxHtbNumPrio; i++) {
+        std::string printSet = "";
+        for (auto & elem : cl->inner.innerFeeds[i]){
+            printSet.append(elem->name);
+            printSet.append(" ;");
+        }
+        printSet.append(" Next to dequeue: ");
+        if (cl->inner.nextToDequeue[i] != NULL) {
+            printSet.append(cl->inner.nextToDequeue[i]->name);
+        } else {
+            printSet.append("None");
+        }
+        EV << "   - Inner feed for priority " << i  << ": " << printSet << endl;
+    }
+}
+
+void HTBScheduler::updateClassMode(htbClass *cl, simtime_t diff) {
+    return;
+}
+
+void HTBScheduler::accountTokens(htbClass *cl, int bytes, simtime_t diff) {
+    return;
+}
+
+void HTBScheduler::accountCTokens(htbClass *cl, int bytes, simtime_t diff) {
+    return;
+}
+
+void HTBScheduler::chargeClass(htbClass *leafCl, int borrowLevel) {
+    return;
+}
+
+
+
 } // namespace queueing
 } // namespace inet
+
+
+
+
 
