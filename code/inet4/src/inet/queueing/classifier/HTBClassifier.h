@@ -18,9 +18,9 @@
 #ifndef __INET_HTBCLASSIFIER_H
 #define __INET_HTBCLASSIFIER_H
 
+#include "../scheduler/HTBScheduler.h"
 #include "inet/common/packet/PacketFilter.h"
 #include "inet/queueing/base/PacketClassifierBase.h"
-#include "inet/queueing/scheduler/HTBScheduler.h"
 
 namespace inet {
 namespace queueing {

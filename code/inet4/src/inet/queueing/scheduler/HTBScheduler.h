@@ -26,9 +26,7 @@
 namespace inet {
 namespace queueing {
 
-#define CAN_SEND 0;
-#define MAY_BORROW 1;
-#define CANT_SEND 2;
+#define HTB_HYSRERESIS 0;
 
 #define HTB_MAX_NUM_PRIO 8;
 
@@ -39,16 +37,22 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
 
     static const int maxHtbDepth = 8;
     static const int maxHtbNumPrio = 8;
+    static const int can_send = 0;
+    static const int may_borrow = 1;
+    static const int cant_send = 2;
+    static const int htb_hysteresis=0;
+
+    double linkDatarate;
 
     struct htbClass {
         const char* name = "";
-        int assignedRate = 0;
-        int ceilingRate = 0;
-        int burstSize = 0;
-        int cburstSize = 0;
+        long long assignedRate = 0;
+        long long ceilingRate = 0;
+        long long burstSize = 0;
+        long long cburstSize = 0;
 
         int quantum = 0;
-        long mbuffer = 0;
+        long long mbuffer = 0;
 
         simtime_t checkpointTime = 0;
         int level = 0;
@@ -59,7 +63,7 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
         long tokens = 0;
         long ctokens = 0;
 
-        int mode = CAN_SEND;
+        int mode = can_send;
 
         bool activePriority[maxHtbNumPrio] = { false };
 
@@ -124,11 +128,17 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
     void activateClass(htbClass *cl, int priority);
     void deactivateClass(htbClass *cl, int priority);
 
+    void activateClassPrios(htbClass *cl);
+    void deactivateClassPrios(htbClass *cl);
+
     // TODO: Next methods for accounting!
-    void updateClassMode(htbClass *cl, simtime_t diff); //TODO: Marija
-    void accountTokens(htbClass *cl, int bytes, simtime_t diff); //TODO: Marija
-    void accountCTokens(htbClass *cl, int bytes, simtime_t diff); //TODO: Marija
-    void chargeClass(htbClass *leafCl, int borrowLevel); //TODO: Marcin
+    inline long htb_hiwater(htbClass *cl);
+    inline long htb_lowater(htbClass *cl);
+    int classMode(htbClass *cl, long long *diff);
+    void updateClassMode(htbClass *cl, long long *diff); //TODO: Marija
+    void accountTokens(htbClass *cl, long long bytes, long long diff); //TODO: Marija
+    void accountCTokens(htbClass *cl, long long bytes, long long diff); //TODO: Marija
+    void chargeClass(htbClass *leafCl, int borrowLevel, Packet *packetToDequeue); //TODO: Marcin
 
 };
 

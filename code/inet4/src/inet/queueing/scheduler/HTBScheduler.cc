@@ -17,6 +17,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+//#include <algorithm>
 #include "inet/queueing/scheduler/HTBScheduler.h"
 #include "inet/common/XMLUtils.h"
 
@@ -70,19 +71,21 @@ HTBScheduler::htbClass *HTBScheduler::createAndAddNewClass(cXMLElement* oneClass
     newClass->name = oneClass->getAttribute("id");
     const char* parentName = oneClass->getFirstChildWithTag("parentId")->getNodeValue();
 
-    int rate = atoi(oneClass->getFirstChildWithTag("rate")->getNodeValue());
+    long long rate = atoi(oneClass->getFirstChildWithTag("rate")->getNodeValue())*1e3;
     newClass->assignedRate = rate;
-    int ceil = atoi(oneClass->getFirstChildWithTag("ceil")->getNodeValue());
+    long long ceil = atoi(oneClass->getFirstChildWithTag("ceil")->getNodeValue())*1e3;
     newClass->ceilingRate = ceil;
-    int burst = atoi(oneClass->getFirstChildWithTag("burst")->getNodeValue());
+    long long burstTemp = atoi(oneClass->getFirstChildWithTag("burst")->getNodeValue());
+    long long burst = burstTemp*1e+12/linkDatarate;
     newClass->burstSize = burst;
-    int cburst = atoi(oneClass->getFirstChildWithTag("cburst")->getNodeValue());
+    long long cburstTemp = atoi(oneClass->getFirstChildWithTag("cburst")->getNodeValue());
+    long long cburst = cburstTemp*1e+12/linkDatarate;
     newClass->cburstSize = cburst;
     int level = atoi(oneClass->getFirstChildWithTag("level")->getNodeValue());
     newClass->level = level;
     int quantum = atoi(oneClass->getFirstChildWithTag("quantum")->getNodeValue());
     newClass->quantum = quantum;
-    int mbuffer = atoi(oneClass->getFirstChildWithTag("mbuffer")->getNodeValue());
+    long long mbuffer = atoi(oneClass->getFirstChildWithTag("mbuffer")->getNodeValue())*1e9;
     newClass->mbuffer = mbuffer;
     newClass->checkpointTime = simTime();
     newClass->tokens = burst;
@@ -123,6 +126,9 @@ void HTBScheduler::initialize(int stage)
     // It gets references to our leaf queues into the scheduler
     PacketSchedulerBase::initialize(stage);
     if (stage == INITSTAGE_LOCAL) {
+        int interfaceIndex = getParentModule()->getParentModule()->getParentModule()->getIndex();
+        linkDatarate = getParentModule()->getParentModule()->getParentModule()->getParentModule()->gateByOrdinal(interfaceIndex)->getPreviousGate()->getChannel()->getNominalDatarate();
+        EV << "SchedInit: " << linkDatarate << endl;
         for (auto provider : providers) {
             collections.push_back(dynamic_cast<IPacketCollection *>(provider)); // Get pointers to queues
 //            classes.push_back(htbInitializeNewClass()); // Initialize the dummy test vector
@@ -140,7 +146,6 @@ void HTBScheduler::initialize(int stage)
             levels[i]=new htbLevel();
             levels[i]->levelId = i;
         }
-
 
 
     }
@@ -220,17 +225,22 @@ void HTBScheduler::printTest() {
 void HTBScheduler::activateClass(htbClass *cl, int priority) {
     if (!cl->activePriority[priority]) {
         cl->activePriority[priority] = true;
-        htbLevel *lvl = levels[cl->level];
-        lvl->selfFeeds[priority].insert(cl);
+        activateClassPrios(cl);
+//        htbLevel *lvl = levels[cl->level];
+//        lvl->selfFeeds[priority].insert(cl);
+
     }
 }
 
+
+//TODO: Marija: this has to be extended to check all self feeds of all levels, not only the level we are in ?
 void HTBScheduler::deactivateClass(htbClass *cl, int priority) {
     if (cl->activePriority[priority]) {
+        deactivateClassPrios(cl);
         cl->activePriority[priority] = false;
-        htbLevel *lvl =  levels[cl->level];
-        lvl->selfFeeds[priority].erase(cl);
-        lvl->waitingClasses.erase(cl);
+        htbLevel *lvl =  levels[cl->level];     //TODO: Do we need this here???
+//        lvl->selfFeeds[priority].erase(cl);
+        lvl->waitingClasses.erase(cl);          //TODO: Do we need this here???
     }
 }
 
@@ -250,7 +260,6 @@ void HTBScheduler::htbEnqueue(int index, Packet *packet) {
 void HTBScheduler::htbDequeue(int index) {
     Packet *thePacketToPop = providers[index]->canPopPacket();
     htbClass *currLeaf = leafClasses.at(index);
-    currLeaf->checkpointTime = SimTime();
     int packetLen = thePacketToPop->getByteLength();
     EV_INFO << "HTBScheduler: htbDequeue " << index << "; Dequeue " << packetLen << " bytes." << endl;
     currLeaf->leaf.queueLevel -= packetLen;
@@ -260,6 +269,8 @@ void HTBScheduler::htbDequeue(int index) {
     }
     printClass(currLeaf);
     printLevel(levels[currLeaf->level], currLeaf->level);
+
+    chargeClass(currLeaf, 0, thePacketToPop);
 //    printInner(currLeaf);
 //    EV_INFO << "HTBScheduler: Bytes in queue at index " << index << " = " << leafClasses.at(index)->type.leaf.queueLevel << endl;
     return;
@@ -302,19 +313,233 @@ void HTBScheduler::printInner(htbClass *cl) {
     }
 }
 
-void HTBScheduler::updateClassMode(htbClass *cl, simtime_t diff) {
+
+inline long HTBScheduler::htb_lowater(htbClass *cl)
+{
+    if (htb_hysteresis)
+        return cl->mode != cant_send ? -cl->cburstSize : 0;
+    else
+        return 0;
+}
+
+inline long HTBScheduler::htb_hiwater(htbClass *cl)
+{
+    if (htb_hysteresis)
+        return cl->mode == can_send? -cl->burstSize : 0;
+    else
+        return 0;
+}
+
+
+
+
+int HTBScheduler::classMode(htbClass *cl, long long *diff) {
+
+    signed int toks;
+    if ((toks = (cl->ctokens + *diff)) < htb_lowater(cl)) {
+        *diff = -toks;
+        return cant_send;
+    }
+
+    if ((toks = (cl->tokens + *diff)) >= htb_hiwater(cl))
+        return can_send;
+
+    *diff = -toks;
+    return may_borrow;
+}
+
+
+void HTBScheduler::activateClassPrios(htbClass *cl) {
+    htbClass *parent = cl->parent;
+
+    bool newActivity[maxHtbNumPrio];
+    bool tempActivity[maxHtbNumPrio];
+    std::copy(std::begin(cl->activePriority), std::end(cl->activePriority), std::begin(newActivity));
+
+    while (cl->mode == may_borrow && parent != NULL && std::any_of(std::begin(newActivity), std::end(newActivity), [](bool b) {return b;})) {
+        std::copy(std::begin(newActivity), std::end(newActivity), std::begin(tempActivity));
+        for (int i = 0; i < maxHtbNumPrio; i++) { // i = priority level
+            if (tempActivity[i]) {
+                if (parent->activePriority[i]) {
+                    newActivity[i] = false;
+                } else {
+                    parent->activePriority[i] = true;
+                }
+                parent->inner.innerFeeds[i].insert(cl);
+            }
+        }
+        cl = parent;
+        parent = cl->parent;
+    }
+
+    if (cl->mode == can_send && std::any_of(std::begin(newActivity), std::end(newActivity), [](bool b) {return b;})){
+        for (int i = 0; i < maxHtbNumPrio; i++) { // i = priority level
+            if (newActivity[i]) {
+                levels[cl->level]->selfFeeds[i].insert(cl);
+            }
+        }
+    }
+}
+
+void HTBScheduler::deactivateClassPrios(htbClass *cl) {
+    htbClass *parent = cl->parent;
+
+    bool newActivity[maxHtbNumPrio];
+    bool tempActivity[maxHtbNumPrio];
+    std::copy(std::begin(cl->activePriority), std::end(cl->activePriority), std::begin(newActivity));
+
+    while (cl->mode == may_borrow && parent != NULL && std::any_of(std::begin(newActivity), std::end(newActivity), [](bool b) {return b;})) {
+        std::copy(std::begin(newActivity), std::end(newActivity), std::begin(tempActivity));
+        for (int i = 0; i < maxHtbNumPrio; i++) {
+            newActivity[i] = false;
+        }
+
+        for (int i = 0; i < maxHtbNumPrio; i++) { // i = priority level
+            if (tempActivity[i]) {
+                if (parent->inner.innerFeeds[i].find(cl) != parent->inner.innerFeeds[i].end()) {
+                    parent->inner.innerFeeds[i].erase(cl);
+                }
+                if (parent->inner.innerFeeds[i].empty()) {
+                    parent->activePriority[i] = false;
+                    newActivity[i] = true;
+                }
+            }
+        }
+        cl = parent;
+        parent = cl->parent;
+    }
+
+    if (cl->mode == can_send && std::any_of(std::begin(newActivity), std::end(newActivity), [](bool b) {return b;})){
+        for (int i = 0; i < maxHtbNumPrio; i++) { // i = priority level
+            if (newActivity[i]) {
+                levels[cl->level]->selfFeeds[i].erase(cl);
+            }
+        }
+    }
+}
+
+void HTBScheduler::updateClassMode(htbClass *cl, long long *diff) {
+
+    int newMode = classMode(cl, diff);
+
+    if (newMode == cl->mode)
+            return;
+    //Marija: this is just statistics I think
+       /* if (new_mode == HTB_CANT_SEND) {
+
+            cl->overlimits++;
+            q->overlimits++;
+            }*/
+
+    // TODO: !!!!!!!!!!WE NEED THIS!!!!!!!!!!!
+    if (std::any_of(std::begin(cl->activePriority), std::end(cl->activePriority), [](bool b) {return b;})) {
+        if (cl->mode != cant_send) {
+            deactivateClassPrios(cl);
+        }
+        cl->mode = newMode;
+        if (newMode != cant_send) {
+            activateClassPrios(cl);
+        }
+    } else {
+        cl->mode = newMode;
+    }
+}
+
+void HTBScheduler::accountTokens(htbClass *cl, long long bytes, long long diff) {
+
+    long long toks = diff + cl->tokens;
+    if (toks > cl->burstSize)
+        toks = cl->burstSize;
+
+        //TODO:psched_l2t_ns(&cl->ceil, bytes), Length to Time (L2T) lookup in a qdisc_rate_table, to determine how
+        //long it will take to send a packet given its size.
+    /*LINUX psched:
+     * static inline u64 psched_l2t_ns(const struct psched_ratecfg *r,
+                                 unsigned int len)
+ {
+         len += r->overhead;
+
+      if (unlikely(r->linklayer == TC_LINKLAYER_ATM))
+                return ((u64)(DIV_ROUND_UP(len,48)*53) * r->mult) >> r->shift;
+
+        return ((u64)len * r->mult) >> r->shift;
+     */
+
+        // toks -= (s64) psched_l2t_ns(&cl->ceil, bytes);
+    toks-= bytes*8*1e9/cl->assignedRate;
+
+    if (toks <= -cl->mbuffer)
+        toks = 1 - cl->mbuffer;
+
+    cl->tokens = toks;
     return;
 }
 
-void HTBScheduler::accountTokens(htbClass *cl, int bytes, simtime_t diff) {
-    return;
+void HTBScheduler::accountCTokens(htbClass *cl, long long bytes, long long diff) {
+
+    long long toks = diff + cl->ctokens;
+    if (toks > cl->cburstSize)
+        toks = cl->cburstSize;
+    //TODO:psched_l2t_ns(&cl->ceil, bytes)
+    // toks -= (s64) psched_l2t_ns(&cl->ceil, bytes);
+    toks-= bytes*8*1e9/cl->ceilingRate;
+    if (toks <= -cl->mbuffer)
+        toks = 1 - cl->mbuffer;
+
+    cl->ctokens = toks;
+
+   return;
 }
 
-void HTBScheduler::accountCTokens(htbClass *cl, int bytes, simtime_t diff) {
-    return;
-}
+void HTBScheduler::chargeClass(htbClass *leafCl, int borrowLevel, Packet *packetToDequeue) {
+    long long bytes = (long long) packetToDequeue->getByteLength();
+    int old_mode;
+    long long diff;
 
-void HTBScheduler::chargeClass(htbClass *leafCl, int borrowLevel) {
+    htbClass *cl;
+    cl = leafCl;
+
+    while (cl) {
+        EV << "Before charge" << endl;
+        printClass(cl);
+        diff = (long long) std::min((simTime() - cl->checkpointTime).inUnit(SIMTIME_NS), (int64_t)cl->mbuffer);
+        EV << "Diff is: " << diff << "; Packet Bytes: " << bytes << "Used toks:" << bytes*8*1e9/cl->assignedRate << "Used ctoks:" << bytes*8*1e9/cl->ceilingRate << endl;
+        if (cl->level >= borrowLevel) {
+//            if (cl->level == borrowLevel)
+//                cl->xstats.lends++;
+            accountTokens(cl, bytes, diff);
+        } else {
+//            cl->xstats.borrows++;
+            cl->tokens += diff; /* we moved t_c; update tokens */
+        }
+        accountCTokens(cl, bytes, diff);
+
+        EV << "Checkpoint Time before: " << cl->checkpointTime << endl;
+        cl->checkpointTime = simTime();
+        EV << "Checkpoint Time after: " << cl->checkpointTime << endl;
+
+        old_mode = cl->mode;
+        diff = 0;
+        updateClassMode(cl, &diff);
+        if (old_mode != cl->mode) {
+            if (old_mode != can_send) {
+                // TODO:Delete from wait queue
+//                htb_safe_rb_erase(&cl->pq_node, &q->hlevel[cl->level].wait_pq);
+            }
+            if (cl->mode != can_send) {
+                // TODO:Add to wait queue
+//                htb_add_to_wait_tree(q, cl, diff);
+            }
+        }
+
+        /* update basic stats except for leaves which are already updated */
+//        if (cl->level)
+//            bstats_update(&cl->bstats, skb);
+        EV << "After charge" << endl;
+        printClass(cl);
+        cl = cl->parent;
+    }
+
     return;
 }
 
