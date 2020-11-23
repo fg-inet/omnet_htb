@@ -67,36 +67,26 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
 
         bool activePriority[maxHtbNumPrio] = { false };
 
-        simtime_t nextEventTime = 0;
-
         struct htbClassLeaf {
             int priority;
             int deficit[maxHtbDepth];
             long queueLevel;
-            simsignal_t queueLvl;
             int queueId;
         } leaf;
         struct htbClassInner {
             std::set<htbClass*> innerFeeds[maxHtbNumPrio];
             htbClass* nextToDequeue[maxHtbNumPrio];
         } inner;
-
-        simsignal_t tokenBucket;
-        simsignal_t ctokenBucket;
-    };
-
-    struct waitComp {
-        bool operator()(htbClass* const & a, htbClass* const & b) {
-            return a->nextEventTime < b->nextEventTime;
-        }
     };
 
     struct htbLevel {
         unsigned int levelId;
         std::set<htbClass*> selfFeeds[maxHtbNumPrio];
         htbClass* nextToDequeue[maxHtbNumPrio];
-        std::set<htbClass*, waitComp> waitingClasses;
+        std::set<htbClass*> waitingClasses;
     };
+
+
 
     htbLevel* levels[maxHtbDepth];
   // std::vector<htbLevel*> levels;
@@ -129,7 +119,7 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
     void printTest();
 
     void htbEnqueue(int index, Packet *packet);
-    int htbDequeue(int priority, int level);
+    void htbDequeue(int index);
 //    htbClass *htbInitializeNewClass();
     void printClass(htbClass *cl);
     void printLevel(htbLevel *level, int index);
@@ -149,10 +139,6 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
     void accountTokens(htbClass *cl, long long bytes, long long diff); //TODO: Marija
     void accountCTokens(htbClass *cl, long long bytes, long long diff); //TODO: Marija
     void chargeClass(htbClass *leafCl, int borrowLevel, Packet *packetToDequeue); //TODO: Marcin
-
-    void htbAddToWaitTree(htbClass *cl, long long delay);
-    htbClass *getLeaf(int priority, int level);
-    simtime_t doEvents(int level);
 
 };
 
