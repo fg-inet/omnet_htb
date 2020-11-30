@@ -28,5 +28,19 @@ simple HTBScheduler extends PacketSchedulerBase like IPacketScheduler
 {
     parameters:
         xml htbTreeConfig; // The htb tree structure
+        
+        bool htbHysterisis = default(false); // Use hysterisis?
+        
         @class(HTBScheduler);
+        
+        @signal[class-*-queueLevel](type=long);
+		@statisticTemplate[queueLevel](record=vector);
+	
+		@signal[class-*-tokenLevel](type=long);
+		@statisticTemplate[tokenLevel](record=vector);
+		@signal[class-*-ctokenLevel](type=long);
+		@statisticTemplate[ctokenLevel](record=vector);
+		
+		@signal[class-*-mode](type=long);
+		@statisticTemplate[classMode](record=vector);
 }

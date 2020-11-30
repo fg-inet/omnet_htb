@@ -40,7 +40,8 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
     static const int can_send = 0;
     static const int may_borrow = 1;
     static const int cant_send = 2;
-    static const int htb_hysteresis=0;
+
+    bool htb_hysteresis;
 
     double linkDatarate;
 
@@ -83,6 +84,7 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
 
         simsignal_t tokenBucket;
         simsignal_t ctokenBucket;
+        simsignal_t classMode;
     };
 
     struct waitComp {
@@ -115,6 +117,7 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
     virtual int schedulePacket() override;
 
   public:
+    int classMode(htbClass *cl, long long *diff);
     virtual int getMaxNumPackets() const override { return -1; }
     virtual int getNumPackets() const override;
 
@@ -144,7 +147,8 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
     // TODO: Next methods for accounting!
     inline long htb_hiwater(htbClass *cl);
     inline long htb_lowater(htbClass *cl);
-    int classMode(htbClass *cl, long long *diff);
+//    int classMode(htbClass *cl, long long *diff);
+
     void updateClassMode(htbClass *cl, long long *diff); //TODO: Marija
     void accountTokens(htbClass *cl, long long bytes, long long diff); //TODO: Marija
     void accountCTokens(htbClass *cl, long long bytes, long long diff); //TODO: Marija

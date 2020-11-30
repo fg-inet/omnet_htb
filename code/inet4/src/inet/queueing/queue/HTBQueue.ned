@@ -30,6 +30,7 @@ module HTBQueue extends CompoundPacketQueue
 {
     parameters:
         int numQueues;
+        bool htbHysterisis = default(false); // Use hysterisis?
         xml htbTreeConfig = default(xml("<config></config>")); // The htb tree structure
     submodules:
         classifier: <default("HTBClassifier")> like IPacketClassifier {
@@ -44,6 +45,7 @@ module HTBQueue extends CompoundPacketQueue
         }
         scheduler: <default("HTBScheduler")> like IPacketScheduler {
             parameters:
+                htbHysterisis = htbHysterisis; // Use hysterisis?
                 htbTreeConfig = default(htbTreeConfig);
                 @display("p=550,100");
         }
