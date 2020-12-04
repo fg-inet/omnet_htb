@@ -47,13 +47,10 @@ void HTBClassifier::initialize(int stage)
         EV_FATAL << "Classifier is in initstage 1 :)" << endl;
         cModule *targetModule = getParentModule()->getSubmodule("scheduler");
         scheduler = check_and_cast<HTBScheduler *>(targetModule);
-        scheduler->printTest();
     }
 }
 
-int HTBClassifier::classifyPacket(Packet *packet)
-{
-//    scheduler->printTest();
+int HTBClassifier::classifyPacket(Packet *packet) {
     for (int i = 0; i < (int)filters.size(); i++) {
         auto filter = filters[i];
 //        EV_INFO << "Filter: " << filter << endl;
