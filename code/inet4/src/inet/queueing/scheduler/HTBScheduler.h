@@ -83,8 +83,8 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
         struct htbClassLeaf { // Special class information for leaf
             int priority;
             int deficit[maxHtbDepth]; // Used for deficit round robin (DRR)
-            long queueLevel; // How many bytes in the queue
-            simsignal_t queueLvl; // Signal for queue level statistics collection
+//            long queueLevel; // How many bytes in the queue
+//            simsignal_t queueLvl; // Signal for queue level statistics collection
             int queueId; // Id of the corresponding queue
         } leaf;
         struct htbClassInner { // Special class information for inner/root

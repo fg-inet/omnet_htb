@@ -57,7 +57,7 @@ void HTBScheduler::printClass(htbClass *cl) {
 
     if (strstr(cl->name,"leaf")) {
         EV << "   - leaf priority: " << cl->leaf.priority << endl;
-        EV << "   - current queue level: " << cl->leaf.queueLevel << endl;
+        EV << "   - current queue level: " << collections[cl->leaf.queueId]->getNumPackets() << endl;
         EV << "   - queue num: " << cl->leaf.queueId << endl;
     }
 }
@@ -120,18 +120,18 @@ HTBScheduler::htbClass *HTBScheduler::createAndAddNewClass(cXMLElement* oneClass
             }
         }
         memset(newClass->leaf.deficit, 0, sizeof(newClass->leaf.deficit));
-        newClass->leaf.queueLevel = 0;
+//        newClass->leaf.queueLevel = 0;
         newClass->leaf.queueId = atoi(oneClass->getFirstChildWithTag("queueNum")->getNodeValue());
         newClass->leaf.priority = atoi(oneClass->getFirstChildWithTag("priority")->getNodeValue());
         // Statistics collection for queue levels
-        char queueLevelSignalName[50];
-        sprintf(queueLevelSignalName, "class-%s-queueLevel", newClass->name);
-        newClass->leaf.queueLvl = registerSignal(queueLevelSignalName);
-        char queueLevelStatisticName[50];
-        sprintf(queueLevelStatisticName, "class-%s-queueLevel", newClass->name);
-        cProperty *queueLevelStatisticTemplate = getProperties()->get("statisticTemplate", "queueLevel");
-        getEnvir()->addResultRecorders(this, newClass->leaf.queueLvl, queueLevelStatisticName, queueLevelStatisticTemplate);
-        emit(newClass->leaf.queueLvl, newClass->leaf.queueLevel);
+//        char queueLevelSignalName[50];
+//        sprintf(queueLevelSignalName, "class-%s-queueLevel", newClass->name);
+//        newClass->leaf.queueLvl = registerSignal(queueLevelSignalName);
+//        char queueLevelStatisticName[50];
+//        sprintf(queueLevelStatisticName, "class-%s-queueLevel", newClass->name);
+//        cProperty *queueLevelStatisticTemplate = getProperties()->get("statisticTemplate", "queueLevel");
+//        getEnvir()->addResultRecorders(this, newClass->leaf.queueLvl, queueLevelStatisticName, queueLevelStatisticTemplate);
+//        emit(newClass->leaf.queueLvl, newClass->leaf.queueLevel);
 
     } else if (strstr(newClass->name,"root")) { // ROOT
         newClass->parent = NULL;
@@ -423,8 +423,8 @@ void HTBScheduler::htbEnqueue(int index, Packet *packet) {
     int packetLen = packet->getByteLength();
     EV_INFO << "HTBScheduler: htbEnqueue " << index << "; Enqueue " << packetLen << " bytes." << endl;
     htbClass *currLeaf = leafClasses.at(index);
-    currLeaf->leaf.queueLevel += packetLen; //TODO: Take care of dropped packets!!!! Queue overflow or so...
-    emit(currLeaf->leaf.queueLvl, currLeaf->leaf.queueLevel);
+//    currLeaf->leaf.queueLevel += packetLen; //TODO: Take care of dropped packets!!!! Queue overflow or so...
+//    emit(currLeaf->leaf.queueLvl, currLeaf->leaf.queueLevel);
     activateClass(currLeaf, currLeaf->leaf.priority);
     printClass(currLeaf);
     printLevel(levels[currLeaf->level], currLeaf->level);
@@ -456,25 +456,35 @@ int HTBScheduler::htbDequeue(int priority, int level) {
 
     Packet *thePacketToPop = nullptr;
 
+    htbClass * delClass = nullptr;
+
     do {
+        if (delClass == start) {   // Fix start if we just deleted it
+            start = cl;
+            delClass = nullptr;
+        }
         if (!cl) {
+            EV << "Class does not exist!" << endl;
             return -1;
         }
+        EV << "Checking class " << cl->name << endl;
+        printClass(cl);
         // Take care if the queue is empty, but was not deactivated
-        if (cl->leaf.queueLevel <= 0) {
+        if (collections[cl->leaf.queueId]->isEmpty()) {
+            EV << "Class " << cl->name << " was empty!!" << endl;
             htbClass *next;
             deactivateClass(cl, priority); // Also takes care of DRR if we deleted the nextToDequeue. Only needs to be called once, as leafs can only be active for one prio
-
+            delClass = cl;
             next = getLeaf(priority, level); // Get next leaf available
 
-            if (cl == start)    // Fix start if we just deleted it
-                start = next;
+
             cl = next;
             continue;
         }
         thePacketToPop = providers[cl->leaf.queueId]->canPopPacket();
 
         if (thePacketToPop != nullptr) {
+            EV << "Couldn't pop packet on class " << cl->name << "!" << endl;
             retIndex = cl->leaf.queueId;
             break;
         }
@@ -485,8 +495,8 @@ int HTBScheduler::htbDequeue(int priority, int level) {
 
     if (thePacketToPop != nullptr) {
         EV_INFO << "HTBScheduler: htbDequeue " << retIndex << "; Dequeue " << thePacketToPop->getByteLength() << " bytes." << endl;
-        cl->leaf.queueLevel -= thePacketToPop->getByteLength();
-        emit(cl->leaf.queueLvl, cl->leaf.queueLevel);
+//        cl->leaf.queueLevel -= thePacketToPop->getByteLength();
+//        emit(cl->leaf.queueLvl, cl->leaf.queueLevel);
         cl->leaf.deficit[level] -= thePacketToPop->getByteLength();
         if (cl->leaf.deficit[level] < 0) {
             cl->leaf.deficit[level] += cl->quantum;
@@ -521,7 +531,7 @@ int HTBScheduler::htbDequeue(int priority, int level) {
         /* this used to be after charge_class but this constelation
          * gives us slightly better performance
          */
-        if (cl->leaf.queueLevel == 0) {
+        if (collections[cl->leaf.queueId]->isEmpty()) {
             deactivateClass(cl, priority); // Called for leaf. Leaf can be active for only one prio
         }
         chargeClass(cl, level, thePacketToPop);
@@ -532,7 +542,7 @@ int HTBScheduler::htbDequeue(int priority, int level) {
 
 
     printInner(cl->parent);
-    EV_INFO << "HTBScheduler: Bytes in queue at index " << retIndex << " = " << cl->leaf.queueLevel << endl;
+    EV_INFO << "HTBScheduler: Bytes in queue at index " << retIndex << " = " << collections[cl->leaf.queueId]->getNumPackets() << endl;
     return retIndex;
 }
 

@@ -33,8 +33,8 @@ simple HTBScheduler extends PacketSchedulerBase like IPacketScheduler
         
         @class(HTBScheduler);
         
-        @signal[class-*-queueLevel](type=long);
-		@statisticTemplate[queueLevel](record=vector);
+//        @signal[class-*-queueLevel](type=long);
+//		@statisticTemplate[queueLevel](record=vector);
 	
 		@signal[class-*-tokenLevel](type=long);
 		@statisticTemplate[tokenLevel](record=vector);
