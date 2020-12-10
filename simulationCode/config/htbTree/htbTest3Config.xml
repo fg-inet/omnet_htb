@@ -1,0 +1,39 @@
+<config>
+	<class id="root">
+		<parentId>NULL</parentId>
+		<rate type="int">10000</rate> <!--kilobits per second-->
+		<ceil type="int">10000</ceil> <!--kilobits per second-->
+		<burst type="int">1600</burst> <!--bytes-->
+		<cburst type="int">1600</cburst> <!--bytes-->
+		<level type="int">1</level>
+		<quantum type="int">1600</quantum> <!-- No automatic quantum calculation. Should be slightly above mtu -->
+		<mbuffer type="int">60</mbuffer> <!-- 60 seconds -->
+		<!--https://community.juniper.net/communities/community-home/digestviewer/viewthread?MID=71605-->
+	</class>
+	<class id="leaf1">
+		<parentId>root</parentId>
+		<rate type="int">6000</rate>
+		<ceil type="int">8000</ceil>
+		<burst type="int">1600</burst>
+		<cburst type="int">1600</cburst>
+		<level type="int">0</level>
+		<priority>0</priority>
+		<quantum type="int">1600</quantum> <!-- No automatic quantum calculation. Should be slightly above mtu -->
+		<mbuffer type="int">60</mbuffer> <!-- 60 seconds -->
+		<queueNum type="int">0</queueNum>
+	</class>
+	<class id="leaf2">
+		<parentId>root</parentId>
+		<rate type="int">2000</rate>
+		<ceil type="int">4000</ceil>
+		<burst type="int">1600</burst>
+		<cburst type="int">1600</cburst>
+		<level type="int">0</level>
+		<priority>0</priority>
+		<quantum type="int">1600</quantum> <!-- No automatic quantum calculation. Should be slightly above mtu -->
+		<mbuffer type="int">60</mbuffer> <!-- 60 seconds -->
+		<queueNum type="int">1</queueNum>
+	</class>
+	<!--Id's of leaf nodes need to correspond with ids of the queues-->
+</config>
+

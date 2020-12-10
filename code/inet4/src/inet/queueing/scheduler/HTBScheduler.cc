@@ -75,10 +75,10 @@ HTBScheduler::htbClass *HTBScheduler::createAndAddNewClass(cXMLElement* oneClass
     long long ceil = atoi(oneClass->getFirstChildWithTag("ceil")->getNodeValue())*1e3;
     newClass->ceilingRate = ceil;
     long long burstTemp = atoi(oneClass->getFirstChildWithTag("burst")->getNodeValue());
-    long long burst = burstTemp*1e+12/linkDatarate;
+    long long burst = burstTemp*8*1e+9/linkDatarate;
     newClass->burstSize = burst;
     long long cburstTemp = atoi(oneClass->getFirstChildWithTag("cburst")->getNodeValue());
-    long long cburst = cburstTemp*1e+12/linkDatarate;
+    long long cburst = cburstTemp*8*1e+9/linkDatarate;
     newClass->cburstSize = cburst;
     int level = atoi(oneClass->getFirstChildWithTag("level")->getNodeValue()); // Level in the tree structure. 0 = LEAF!!!
     newClass->level = level;
@@ -611,7 +611,7 @@ inline long HTBScheduler::htb_hiwater(htbClass *cl)
 
 int HTBScheduler::classMode(htbClass *cl, long long *diff) {
 
-    signed int toks;
+    long long toks;
     if ((toks = (cl->ctokens + *diff)) < htb_lowater(cl)) {
         *diff = -toks;
         EV << "Class mode diff 1 = " << *diff << endl;
