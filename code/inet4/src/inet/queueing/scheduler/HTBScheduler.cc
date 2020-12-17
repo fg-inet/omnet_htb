@@ -123,15 +123,18 @@ HTBScheduler::htbClass *HTBScheduler::createAndAddNewClass(cXMLElement* oneClass
 //        newClass->leaf.queueLevel = 0;
         newClass->leaf.queueId = atoi(oneClass->getFirstChildWithTag("queueNum")->getNodeValue());
         newClass->leaf.priority = atoi(oneClass->getFirstChildWithTag("priority")->getNodeValue());
-        // Statistics collection for queue levels
-//        char queueLevelSignalName[50];
-//        sprintf(queueLevelSignalName, "class-%s-queueLevel", newClass->name);
-//        newClass->leaf.queueLvl = registerSignal(queueLevelSignalName);
-//        char queueLevelStatisticName[50];
-//        sprintf(queueLevelStatisticName, "class-%s-queueLevel", newClass->name);
-//        cProperty *queueLevelStatisticTemplate = getProperties()->get("statisticTemplate", "queueLevel");
-//        getEnvir()->addResultRecorders(this, newClass->leaf.queueLvl, queueLevelStatisticName, queueLevelStatisticTemplate);
-//        emit(newClass->leaf.queueLvl, newClass->leaf.queueLevel);
+
+        // Statistics collection for deficit
+        for (int i = 0; i < maxHtbDepth; i++) {
+            char deficitSignalName[50];
+            sprintf(deficitSignalName, "class-%s-deficit%d", newClass->name, i);
+            newClass->leaf.deficitSig[i] = registerSignal(deficitSignalName);
+            char deficitStatisticName[50];
+            sprintf(deficitStatisticName, "class-%s-deficit%d", newClass->name, i);
+            cProperty *deficitStatisticTemplate = getProperties()->get("statisticTemplate", "deficit");
+            getEnvir()->addResultRecorders(this, newClass->leaf.deficitSig[i], deficitStatisticName, deficitStatisticTemplate);
+            emit(newClass->leaf.deficitSig[i], newClass->leaf.deficit[i]);
+        }
 
     } else if (strstr(newClass->name,"root")) { // ROOT
         newClass->parent = NULL;
@@ -303,9 +306,37 @@ int HTBScheduler::getNumPackets() const
             throw cRuntimeError("There is no leaf at index %i!", leafId);
         }
         long long diff = (long long) std::min((simTime() - leafClasses.at(leafId)->checkpointTime).inUnit(SIMTIME_NS), (int64_t)leafClasses.at(leafId)->mbuffer);
-        if (const_cast<HTBScheduler *>(this)->classMode(leafClasses.at(leafId), &diff) != cant_send) { // The case when there are packets available at leaf for dequeuing
-            dequeueSize += collection->getNumPackets();
-        } //else { // The class is red, so there is nothing available to dequeue
+        int currClassMode = const_cast<HTBScheduler *>(this)->classMode(leafClasses.at(leafId), &diff);
+        EV << "Class " << leafClasses.at(leafId)->name << " is in mode: " << currClassMode << endl;
+        if (currClassMode != cant_send) { // The case when there are packets available at leaf for dequeuing
+            bool parentOk = false;
+            htbClass *parent = leafClasses.at(leafId)->parent;
+            if (currClassMode != can_send) {
+                while (parent != NULL) {
+                    long long diff2 = (long long) std::min((simTime() - parent->checkpointTime).inUnit(SIMTIME_NS), (int64_t)parent->mbuffer);
+                    int parentMode = const_cast<HTBScheduler *>(this)->classMode(parent, &diff2);
+                    if (parentMode == can_send) {
+                        parentOk = true;
+                        break;
+                    } else if (parentMode == cant_send) {
+                        break;
+                    }
+                    parent = parent->parent;
+                }
+            } else {
+                parentOk = true;
+            }
+            EV << "Class " << leafClasses.at(leafId)->name << " not in can't send. Is in " << currClassMode << endl;
+            if (parentOk == true) {
+                EV << "Parents also agree that class " << leafClasses.at(leafId)->name << " can send" << endl;
+                dequeueSize += collection->getNumPackets();
+            }
+
+        }
+
+//        if (const_cast<HTBScheduler *>(this)->classMode(leafClasses.at(leafId), &diff) != cant_send) { // The case when there are packets available at leaf for dequeuing
+//            dequeueSize += collection->getNumPackets();
+//        } //else { // The class is red, so there is nothing available to dequeue
 //            if (changeTime == 0 || leafClasses.at(leafId)->nextEventTime < changeTime) { // Update change time if applicable
 //                changeTime = leafClasses.at(leafId)->nextEventTime;
 //                EV << "Set change time to: " << changeTime << endl;
@@ -498,8 +529,10 @@ int HTBScheduler::htbDequeue(int priority, int level) {
 //        cl->leaf.queueLevel -= thePacketToPop->getByteLength();
 //        emit(cl->leaf.queueLvl, cl->leaf.queueLevel);
         cl->leaf.deficit[level] -= thePacketToPop->getByteLength();
+        emit(cl->leaf.deficitSig[level], cl->leaf.deficit[level]);
         if (cl->leaf.deficit[level] < 0) {
             cl->leaf.deficit[level] += cl->quantum;
+            emit(cl->leaf.deficitSig[level], cl->leaf.deficit[level]);
             htbClass *tempNode = cl;
             while (tempNode != rootClass) {
                 if (tempNode->parent->inner.innerFeeds[priority].size() > 1 && tempNode->mode == may_borrow) { //TODO: Probably need to take care of round robin!!
@@ -566,7 +599,9 @@ void HTBScheduler::printLevel(htbLevel *level, int index) {
     std::string printSet = "";
     for (auto & elem : level->waitingClasses){
         printSet.append(elem->name);
-        printSet.append(" ;");
+        printSet.append("(");
+        printSet.append(elem->nextEventTime.str());
+        printSet.append("); ");
     }
     EV << "Wait queue for level " << level->levelId << ": " << printSet << endl;
 }
@@ -826,8 +861,17 @@ void HTBScheduler::accountCTokens(htbClass *cl, long long bytes, long long diff)
 
 void HTBScheduler::htbAddToWaitTree(htbClass *cl, long long delay) {
     cl->nextEventTime = simTime() + SimTime(delay, SIMTIME_NS);
-    EV << "Expected class change at simtime " << cl->nextEventTime << endl;
-    levels[cl->level]->waitingClasses.insert(cl);
+    EV << "Expected class " << cl->name << " change at simtime " << cl->nextEventTime << endl;
+    std::pair<std::set<htbClass*, waitComp>::iterator,bool> ret;
+    printLevel(levels[cl->level], cl->level);
+    ret = levels[cl->level]->waitingClasses.insert(cl);
+    while (!ret.second) {
+        EV << "Class " << cl->name << " could not be inserted to level " << cl->level << " wait queue!" << endl;
+        cl->nextEventTime = simTime() + SimTime(delay+1, SIMTIME_NS);
+        ret = levels[cl->level]->waitingClasses.insert(cl);
+    }
+    printLevel(levels[cl->level], cl->level);
+
 }
 
 void HTBScheduler::chargeClass(htbClass *leafCl, int borrowLevel, Packet *packetToDequeue) {
@@ -874,6 +918,7 @@ void HTBScheduler::chargeClass(htbClass *leafCl, int borrowLevel, Packet *packet
                 // TODO:Add to wait queue
                 htbAddToWaitTree(cl, diff);
                 EV << "Added " << cl->name << " to wait queue on level " << cl->level << endl;
+                printLevel(levels[cl->level], cl->level);
 //                htb_add_to_wait_tree(q, cl, diff);
             }
         }
