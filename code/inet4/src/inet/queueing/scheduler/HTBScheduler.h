@@ -16,6 +16,7 @@
 //
 //
 // This implementation is heavily based on the implementation of Linux HTB qdisc by Martin Devera (https://github.com/torvalds/linux/blob/master/net/sched/sch_htb.c)
+// Code base taken from the "PriorityScheduler"
 // 
 
 #ifndef __INET_HTBSCHEDULER_H

@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program; if not, see http://www.gnu.org/licenses/.
 //
+//
+// This implementation used the "PriorityQueue" as a base!
+//
 
 package inet.queueing.queue;
 
