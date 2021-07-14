@@ -35,6 +35,11 @@ simple HTBScheduler extends PacketSchedulerBase like IPacketScheduler
         
 //        @signal[class-*-queueLevel](type=long);
 //		@statisticTemplate[queueLevel](record=vector);
+		
+		
+		@signal[dequeueIndex](type=long);
+		@statistic[dequeueIndex](title="Index of a queue that just dequeued"; record=vector);
+		
 	
 		@signal[class-*-tokenLevel](type=long);
 		@statisticTemplate[tokenLevel](record=vector);

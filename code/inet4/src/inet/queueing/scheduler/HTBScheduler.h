@@ -30,6 +30,7 @@
 #include <array>
 #include <cstdlib>
 #include <algorithm>
+#include <functional>
 
 namespace inet {
 namespace queueing {
@@ -37,6 +38,7 @@ namespace queueing {
 class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollection
 {
   protected:
+    simsignal_t dequeueIndexSignal;
     std::vector<IPacketCollection *> collections; // The actual queues
 
     static const int maxHtbDepth = 8; // The maximal amount of levels of htb tree
@@ -69,8 +71,8 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
         // We only need to traverse it from the top when there are classes in the inner feeds, which then store the pointers to children
 
         // The token buckets
-        long tokens = 0; // For assured rate
-        long ctokens = 0; // For ceiling rate
+        long long tokens = 0; // For assured rate
+        long long ctokens = 0; // For ceiling rate
 
         // The mode of the class
         int mode = can_send;
@@ -96,10 +98,17 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
         simsignal_t tokenBucket;
         simsignal_t ctokenBucket;
         simsignal_t classMode;
+
     };
 
     struct waitComp { // Comparator to sort the waiting classes according to their expected mode change time
-        bool operator()(htbClass* const & a, htbClass* const & b) {
+        bool operator()(htbClass* const & a, htbClass* const & b) const {
+            if (a->nextEventTime == b->nextEventTime) {
+                // EV << "Operator; a: " << a->nextEventTime << "; b: " << b->nextEventTime << endl;
+                // srand((unsigned) time(0));
+                // return rand() % 2;
+                return std::less<htbClass*>{}(a, b); // Care for DRR ordering
+            }
             return a->nextEventTime < b->nextEventTime;
         }
     };
@@ -109,7 +118,7 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
         unsigned int levelId; // Level number. 0 = Leaf
         std::set<htbClass*> selfFeeds[maxHtbNumPrio]; // Self feeds for each priority. Contain active green classes
         htbClass* nextToDequeue[maxHtbNumPrio]; // Next green class to dequeue on level
-        std::set<htbClass*, waitComp> waitingClasses; // Red classes waiting to become non-red.
+        std::multiset<htbClass*, waitComp> waitingClasses; // Red classes waiting to become non-red.
     };
 
     htbLevel* levels[maxHtbDepth]; // Levels saved here
@@ -128,6 +137,8 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
     virtual void initialize(int stage) override;
     virtual int schedulePacket() override;
     virtual void handleMessage(cMessage *msg) override;
+
+
 
   public:
     int classMode(htbClass *cl, long long *diff);
@@ -162,6 +173,7 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
     void chargeClass(htbClass *leafCl, int borrowLevel, Packet *packetToDequeue);
 
     void htbAddToWaitTree(htbClass *cl, long long delay);
+    void htbRemoveFromWaitTree(htbClass *cl);
     htbClass *getLeaf(int priority, int level);
     simtime_t doEvents(int level);
 
