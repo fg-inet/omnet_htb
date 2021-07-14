@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program; if not, see http://www.gnu.org/licenses/.
 //
+//
+// This implementation is an extended version of the "ContentBasedClassifier"!
+//
 
 package inet.queueing.classifier;
 
@@ -21,6 +24,7 @@ import inet.queueing.base.PacketClassifierBase;
 import inet.queueing.contract.IPacketClassifier;
 
 //
+// Description from the "ContentBasedClassifier":
 // This module connects one packet producer to multiple packet consumers. It
 // can be pushed with packets from the connected packet producer. When this
 // happens, the classifier pushes the packet to one of its connected packet

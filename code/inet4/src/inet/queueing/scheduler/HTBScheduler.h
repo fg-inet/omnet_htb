@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program; if not, see http://www.gnu.org/licenses/.
 //
+//
+// This implementation is heavily based on the implementation of Linux HTB qdisc by Martin Devera (https://github.com/torvalds/linux/blob/master/net/sched/sch_htb.c)
+// 
 
 #ifndef __INET_HTBSCHEDULER_H
 #define __INET_HTBSCHEDULER_H
@@ -104,9 +107,6 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
     struct waitComp { // Comparator to sort the waiting classes according to their expected mode change time
         bool operator()(htbClass* const & a, htbClass* const & b) const {
             if (a->nextEventTime == b->nextEventTime) {
-                // EV << "Operator; a: " << a->nextEventTime << "; b: " << b->nextEventTime << endl;
-                // srand((unsigned) time(0));
-                // return rand() % 2;
                 return std::less<htbClass*>{}(a, b); // Care for DRR ordering
             }
             return a->nextEventTime < b->nextEventTime;

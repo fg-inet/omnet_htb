@@ -21,8 +21,7 @@ import inet.queueing.base.PacketSchedulerBase;
 import inet.queueing.contract.IPacketScheduler;
 
 //
-// This classifier pops packets from the first non-empty among its connected
-// packet providers.
+// This scheduler pops packets according to the HTB criterion
 //
 simple HTBScheduler extends PacketSchedulerBase like IPacketScheduler
 {
@@ -32,11 +31,7 @@ simple HTBScheduler extends PacketSchedulerBase like IPacketScheduler
         bool htbHysterisis = default(false); // Use hysterisis?
         
         @class(HTBScheduler);
-        
-//        @signal[class-*-queueLevel](type=long);
-//		@statisticTemplate[queueLevel](record=vector);
-		
-		
+
 		@signal[dequeueIndex](type=long);
 		@statistic[dequeueIndex](title="Index of a queue that just dequeued"; record=vector);
 		

@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program; if not, see http://www.gnu.org/licenses/.
 //
+//
+// This implementation is an extended version of the "ContentBasedClassifier"!
+//
 
 #ifndef __INET_HTBCLASSIFIER_H
 #define __INET_HTBCLASSIFIER_H
