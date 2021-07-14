@@ -1,1 +1,5 @@
-# omnet_htb
+# OMNeT++/INET Implementation of the Hierarchical Token Bucket Queuing Module
+
+Detailed description of the repository comming soon...
+
+User guide coming soon...
