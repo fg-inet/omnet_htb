@@ -25,9 +25,6 @@ import inet.queueing.contract.IPacketClassifier;
 import inet.queueing.contract.IPacketQueue;
 import inet.queueing.contract.IPacketScheduler;
 
-//
-// This module implements an HTB qdisc with multiple inner queues.
-//
 module HTBQueue extends CompoundPacketQueue
 {
     parameters:

@@ -17,7 +17,7 @@
 //
 // This implementation is heavily based on the implementation of Linux HTB qdisc by Martin Devera (https://github.com/torvalds/linux/blob/master/net/sched/sch_htb.c)
 // Code base taken from the "PriorityScheduler"
-// 
+//
 
 #ifndef __INET_HTBSCHEDULER_H
 #define __INET_HTBSCHEDULER_H
@@ -130,7 +130,6 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
     std::vector<htbClass*> innerClasses; // Inner classes saved here for ease of access
     std::vector<htbClass*> leafClasses; // Leaf classes saved here for ease of access
 
-    // TODO: WIP: solve the problem that omnet does not periodically tries to dequeue.
     cMessage *classModeChangeEvent = nullptr;
 
 

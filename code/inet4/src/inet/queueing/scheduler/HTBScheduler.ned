@@ -14,24 +14,25 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program; if not, see http://www.gnu.org/licenses/.
 //
+//
+// This implementation is heavily based on the implementation of Linux HTB qdisc by Martin Devera (https://github.com/torvalds/linux/blob/master/net/sched/sch_htb.c)
+// Code base taken from the "PriorityScheduler"
+//
 
 package inet.queueing.scheduler;
 
 import inet.queueing.base.PacketSchedulerBase;
 import inet.queueing.contract.IPacketScheduler;
 
-//
-// This scheduler pops packets according to the HTB criterion
-//
 simple HTBScheduler extends PacketSchedulerBase like IPacketScheduler
 {
     parameters:
         xml htbTreeConfig; // The htb tree structure
         
-        bool htbHysterisis = default(false); // Use hysterisis?
+        bool htbHysterisis = default(false);
         
         @class(HTBScheduler);
-
+	
 		@signal[dequeueIndex](type=long);
 		@statistic[dequeueIndex](title="Index of a queue that just dequeued"; record=vector);
 		
