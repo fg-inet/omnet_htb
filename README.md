@@ -8,8 +8,11 @@ Repository including the implementation of Hierarchical Token Bucket (HTB) for O
 
 In order to run HTB you need OMNeT++ in version 5.5.1 (available [here](https://omnetpp.org/download/old)) and INET Framework in version 4.2.0 (available [here](https://github.com/inet-framework/inet/releases/tag/v4.2.0)).
 
-Steps:
-Installation steps COMING SOON
+### Steps
+1. Download and Compile Omnet++ - follow the guide https://doc.omnetpp.org/omnetpp/InstallGuide.pdf
+2. Download, unzip and prepare the INET Framework for compilation
+3. Merge the [code/inet4](code/inet) folder into the inet4 folder that you prepared in step 2
+4. Compile the INET framework.
 
 ## User guide
 Simple user guide COMING SOON
