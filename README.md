@@ -11,7 +11,7 @@ In order to run HTB you need OMNeT++ in version 5.5.1 (available [here](https://
 ### Steps
 1. Download and Compile Omnet++ - follow the guide https://doc.omnetpp.org/omnetpp/InstallGuide.pdf
 2. Download, unzip and prepare the INET Framework for compilation
-3. Merge the [code/inet4](code/inet) folder into the inet4 folder that you prepared in step 2
+3. Merge the [code/inet4](code/inet4) folder into the inet4 folder that you prepared in step 2
 4. Compile the INET framework.
 
 ## User guide
