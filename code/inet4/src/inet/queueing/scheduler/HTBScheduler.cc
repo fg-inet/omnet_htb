@@ -79,21 +79,72 @@ HTBScheduler::htbClass *HTBScheduler::createAndAddNewClass(cXMLElement* oneClass
     newClass->assignedRate = rate;
     long long ceil = atoi(oneClass->getFirstChildWithTag("ceil")->getNodeValue())*1e3;
     newClass->ceilingRate = ceil;
-    long long burstTemp = atoi(oneClass->getFirstChildWithTag("burst")->getNodeValue());
-    long long cburstTemp = atoi(oneClass->getFirstChildWithTag("cburst")->getNodeValue());
+
+    // The user has an option to configure burst/cburst manually, or it can be configured automatically
+    long long burstTemp = 0;
+    long long cburstTemp = 0;
+    if (oneClass->getFirstChildWithTag("burst") != nullptr) {
+        burstTemp = atoi(oneClass->getFirstChildWithTag("burst")->getNodeValue()); // Burst specified in Bytes
+        if (burstTemp < mtu) {
+            throw cRuntimeError("Class %s burst of %llu Bytes cannot be smaller than MTU of %llu Bytes! Error regardless of the check corecctness flag!", newClass->name, burstTemp, mtu);
+        } else if (burstTemp < rate/8000) {
+            EV_WARN << "Class " << newClass->name << " burst might be too small for optimal performance! Recommend setting to at least rate/8000 to allow for 1ms burst time." << endl;
+            if (valueCorectnessCheck == true) {
+                throw cRuntimeError("Class %s burst of %llu Bytes is smaller than minimum recommended for optimal performance of %llu Bytes!", newClass->name, burstTemp, rate/8000);
+            }
+        }
+    } else {
+        burstTemp = std::max(rate/8000, mtu);
+        EV_INFO << "User did not specify cburst. Configuring automatically to: " << burstTemp << " Bytes." << endl;
+    }
+    if (oneClass->getFirstChildWithTag("cburst") != nullptr) {
+        cburstTemp = atoi(oneClass->getFirstChildWithTag("cburst")->getNodeValue()); // Cburst specified in Bytes
+        if (cburstTemp < mtu) {
+            throw cRuntimeError("Class %s cburst of %llu Bytes cannot be smaller than MTU of %llu Bytes! Error regardless of the check corecctness flag!", newClass->name, cburstTemp, mtu);
+        } else if (cburstTemp < ceil/8000) {
+            EV_WARN << "Class " << newClass->name << " cburst might be too small for optimal performance! Recommend setting to at least ceil/8000 to allow for 1ms burst time." << endl;
+            if (valueCorectnessCheck == true) {
+                throw cRuntimeError("Class %s cburst of %llu Bytes is smaller than minimum recommended for optimal performance of %llu Bytes!", newClass->name, cburstTemp, ceil/8000);
+            }
+        }
+    } else {
+        cburstTemp = std::max(ceil/8000, mtu);
+        EV_INFO << "User did not specify cburst. Configuring automatically to: " << cburstTemp << " Bytes." << endl;
+    }
 
     if (linkDatarate == -1) {
         throw cRuntimeError("Link datarate was -1!");
     }
 
-    long long burst = burstTemp*8*1e+9/(long long)ceil;
-    long long cburst = cburstTemp*8*1e+9/(long long)linkDatarate;
+    // https://patchwork.ozlabs.org/project/netdev/patch/200901221145.57856.denys@visp.net.lb/ -> Defines that burst/cburst should be at least mtu + 1ms worth of sending at rate/ceil
+    // Determine and calculate the burstSize and cburstSize
+    long long burstChosen = burstTemp;
+    long long cburstChosen = cburstTemp;
+    if (valueCorectnessAdj == true) {
+        if (burstTemp < ceil/8000) {
+            burstChosen = std::max(burstTemp, rate/8000); // Burst should not be smaller than mtu + 1ms worth of sending at rate
+            EV_WARN << "Burst adjusted to " << burstChosen << "Bytes" << endl;
+        }
+        if (cburstTemp < ceil/8000) {
+            cburstChosen = std::max(cburstTemp, ceil/8000); // Cburst should not be smaller than mtu + 1ms worth of sending at ceil
+            EV_WARN << "Cburst adjusted to " << cburstChosen << "Bytes" << endl;
+        }
+    }
+    
+    long long burst = (((long long) burstChosen*8*1e+9)/(long long)rate);
+    long long cburst = (((long long) cburstChosen*8*1e+9)/(long long)ceil);
     
     newClass->burstSize = burst;
     newClass->cburstSize = cburst;
     int level = atoi(oneClass->getFirstChildWithTag("level")->getNodeValue()); // Level in the tree structure. 0 = LEAF!!!
     newClass->level = level;
     int quantum = atoi(oneClass->getFirstChildWithTag("quantum")->getNodeValue());
+    if (valueCorectnessCheck == true && quantum < mtu) {
+        throw cRuntimeError("Class %s quantum of %llu Bytes is smaller than minimum recommended  of %llu Bytes!", newClass->name, quantum, mtu);
+    }
+    if (valueCorectnessAdj == true && quantum < mtu) {
+        quantum = mtu;
+    }
     newClass->quantum = quantum;
     long long mbuffer = atoi(oneClass->getFirstChildWithTag("mbuffer")->getNodeValue())*1e9;
     newClass->mbuffer = mbuffer;
@@ -193,6 +244,9 @@ void HTBScheduler::initialize(int stage)
 {
     PacketSchedulerBase::initialize(stage); // Initialize the packet scheduler module
     if (stage == INITSTAGE_LOCAL) {
+        mtu = par("mtu");
+        valueCorectnessCheck = par("checkHTBTreeValuesForCorectness");
+        valueCorectnessAdj = par("adjustHTBTreeValuesForCorectness");
         // Get the datarate of the link connected to interface
         EV_WARN << "Get link datarate" << endl;
         int interfaceIndex = getParentModule()->getParentModule()->getParentModule()->getIndex();

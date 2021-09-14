@@ -55,6 +55,10 @@ class INET_API HTBScheduler : public PacketSchedulerBase, public IPacketCollecti
 
     double linkDatarate; // The datarate of connected link
 
+    long long mtu;
+    bool valueCorectnessCheck;
+    bool valueCorectnessAdj;
+
     // Structure for the class
     struct htbClass {
         const char *name = "";

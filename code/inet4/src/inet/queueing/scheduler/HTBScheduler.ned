@@ -30,6 +30,10 @@ simple HTBScheduler extends PacketSchedulerBase like IPacketScheduler
         xml htbTreeConfig; // The htb tree structure
         
         bool htbHysterisis = default(false);
+
+		int mtu @unit(B) = default(1500B);
+		bool checkHTBTreeValuesForCorectness = default(true); // Check if some important (burst, cburst, quantum) inputted values in the XML Tree are correct. Will throw errors on incorrect values!
+		bool adjustHTBTreeValuesForCorectness = default(true); // Adjust some important (burst, cburst, quantum) inputted values in the XML Tree if they are incorrect. Will just adjust incorrect values if the above check is disabled
         
         @class(HTBScheduler);
 	
