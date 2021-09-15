@@ -45,37 +45,37 @@ Furthermore, some values can be configured automatically for the classes. These 
 An exemplary XML configuration with one inner class and one leaf class is shown below:
 ```xml
 <config>
-	<class id="root">
-		<parentId>NULL</parentId>
-		<rate type="int">50000</rate>
-		<ceil type="int">50000</ceil>
-		<burst type="int">6250</burst>
-		<cburst type="int">6250</cburst>
-		<level type="int">2</level>
-		<quantum type="int">1500</quantum>
-		<mbuffer type="int">60</mbuffer>
+	<class id="root"> <!--The id is the name of the class. The first class always needs to be called root.-->
+		<parentId>NULL</parentId> <!--Parent of class in HTB tree structure. For root always needs to be NULL.-->
+		<rate type="int">50000</rate> <!--The assured rate in kbit/s. Here = 50 Mbit/s-->
+		<ceil type="int">50000</ceil> <!--The ceiling rate in kbit/s. Here = 50 Mbit/s-->
+		<burst type="int">6250</burst> <!--The burst bytes at assured rate. Must not be smaller than MTU. Should not be smaller than rate/8000 to allow for 1ms of transmit time-->
+		<cburst type="int">6250</cburst> <!--The burst bytes at ceiling rate. Must not be smaller than MTU. Should not be smaller than ceil/8000 to allow for 1ms of transmit time-->
+		<level type="int">2</level> <!--The level of the class in HTB tree hierarchy. For root it has to be above all other classes. In this case = 2-->
+		<quantum type="int">1500</quantum> <!--The number of bytes that can be transmitted by a class before the next class is selected for transmission with the deficit round robin algorithm. Used to avoid class starvation.-->
+		<mbuffer type="int">60</mbuffer> <!--The time for which big burst events are remembered in seconds-->
 	</class>
-	<class id="innerClass0">
-		<parentId>root</parentId>
-		<rate type="int">20000</rate>
-		<ceil type="int">40000</ceil>
-		<burst type="int">2500</burst>
-		<cburst type="int">5000</cburst>
-		<level type="int">1</level>
-		<quantum type="int">1500</quantum>
-		<mbuffer type="int">60</mbuffer>
+	<class id="innerClass0"> <!--The id is the name of the class. The inner classes must always be specified directly after root and before leaves. Inner class needs to have "inner" in it's name!-->
+		<parentId>root</parentId> <!--Parent of class in HTB tree structure. For inner can be root or other inner classes that are on a higher level-->
+		<rate type="int">20000</rate> <!--The assured rate in kbit/s. Here = 20 Mbit/s-->
+		<ceil type="int">40000</ceil> <!--The ceiling rate in kbit/s. Here = 40 Mbit/s-->
+		<burst type="int">2500</burst> <!--The burst bytes at assured rate. Must not be smaller than MTU. Should not be smaller than rate/8000 to allow for 1ms of transmit time-->
+		<cburst type="int">5000</cburst> <!--The burst bytes at ceiling rate. Must not be smaller than MTU. Should not be smaller than ceil/8000 to allow for 1ms of transmit time-->
+		<level type="int">1</level> <!--The level of the class in HTB tree hierarchy. For inner it has to be > 0 and smaller than that of root. In this case = 1-->
+		<quantum type="int">1500</quantum> <!--The number of bytes that can be transmitted by a class before the next class is selected for transmission with the deficit round robin algorithm. Used to avoid class starvation.-->
+		<mbuffer type="int">60</mbuffer> <!--The time for which big burst events are remembered in seconds-->
 	</class>
-	<class id="leafClass0">
-		<parentId>innerClass0</parentId>
-		<rate type="int">3000</rate>
-		<ceil type="int">20000</ceil>
-		<burst type="int">1500</burst>
-		<cburst type="int">2500</cburst>
-		<level type="int">0</level>
-		<quantum type="int">1500</quantum>
-		<mbuffer type="int">60</mbuffer>
-		<priority>0</priority>
-		<queueNum type="int">0</queueNum>
+	<class id="leafClass0"> <!--The id is the name of the class. The leaf classes must always be specified after all inner classes. Leaf class needs to have "leaf" in it's name!-->
+		<parentId>innerClass0</parentId> <!--Parent of class in HTB tree structure. For leaf can be root or any inner class-->
+		<rate type="int">3000</rate> <!--The assured rate in kbit/s. Here = 3 Mbit/s-->
+		<ceil type="int">20000</ceil> <!--The ceiling rate in kbit/s. Here = 20 Mbit/s-->
+		<burst type="int">1500</burst> <!--The burst bytes at assured rate. Must not be smaller than MTU. Should not be smaller than rate/8000 to allow for 1ms of transmit time-->
+		<cburst type="int">2500</cburst> <!--The burst bytes at ceiling rate. Must not be smaller than MTU. Should not be smaller than ceil/8000 to allow for 1ms of transmit time-->
+		<level type="int">0</level> <!--The level of the class in HTB tree hierarchy. For leaf it must be = 0. In this case = 0-->
+		<quantum type="int">1500</quantum> <!--The number of bytes that can be transmitted by a class before the next class is selected for transmission with the deficit round robin algorithm. Used to avoid class starvation.-->
+		<mbuffer type="int">60</mbuffer> <!--The time for which big burst events are remembered in seconds-->
+		<priority>0</priority> <!--The priority of class (0 = highest, 7 = lowest). Can only be specified for leaves and gets inhereted in the hierarhy. Classes with higher prioriy will always have their assured rate satisfied first. Same applies to the borrowed rate.-->
+		<queueNum type="int">0</queueNum> <!--The number of PacketQueue configured for interface. Relevant for the classifier and for the HTB to know from which queue packets should be dequeued for the leaf.-->
 	</class>
 </config>
 ```
