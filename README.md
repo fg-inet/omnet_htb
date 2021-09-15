@@ -18,6 +18,7 @@ In order to run HTB you need OMNeT++ in version 5.5.1 (available [here](https://
 
 ## User guide - WIP
 The HTBQueue Compound Module can be used in place of any queuing module currently present within the INET Framework. Currently, only the PPP Interface is supported.
+Examplary simulations can be found [here](examples/simulations).
 
 Two configuration elements are required for the use of the HTBQueue Module within your simulation:
 1. An XML configuration containing the HTB tree structure
@@ -33,9 +34,16 @@ There are a few special requirements that the XML file needs to fulfil:
 There are some limitations to the XML configuration and the HTB configuration in general:
 - You can configure up to 8 levels within the HTB tree (TODO: Insert a tree)
 - You can have up to 8 various priorities. Priority 0 is the highest. Priority 7 is the lowest.
-- Burst, cburst, and quantum cannot be lower than the maximum transmission unit.
+- Burst, cburst, and quantum cannot be lower than the maximum transmission unit. The queue will throw an error if so configured.
 - queueNum starts at 0. The number of queues (configured in INI) needs to correspond to the number of leafs in HTB.
 - The level needs to correspond to the level within the tree, with 0 being reserved for the leaves. Parent of a class cannot be on the same or lower level than the child!
+- The parent of root needs to be "NULL"
+- Sum of children's assured rates cannot exceed the assured rate of the parent!
+
+Furthermore, some values can be configured automatically for the classes. These values include each class's burst, cburst, and quantum. The user can also configure those values themselves.
+
+An exemplary XML configuration is shown below (TODO).
+
 
 ## Verification results
 
