@@ -16,7 +16,7 @@ In order to run HTB you need OMNeT++ in version 5.5.1 (available [here](https://
 3. Merge the [code/inet4](code/inet4) folder into the inet4 folder that you prepared in step 2
 4. Compile the INET framework.
 
-## User guide - WIP
+## User Guide - WIP
 The HTBQueue Compound Module can be used in place of any queuing module currently present within the INET Framework. Currently, only the PPP Interface is supported.
 Examplary simulations can be found [here](examples/simulations).
 
@@ -24,7 +24,7 @@ Two configuration elements are required for the use of the HTBQueue Module withi
 1. An XML configuration containing the HTB tree structure
 2. The INI file configuration of the Queuing Module for your interface.
 
-### The XML file
+### The XML File Configuration
 There are a few special requirements that the XML file needs to fulfil:
 - The order of the classes in the XML file matters!!!
 - The first class to be specified needs to be the root
@@ -80,7 +80,27 @@ An exemplary XML configuration with one inner class and one leaf class is shown 
 </config>
 ```
 
-## Verification results
+### The INI File Configuration
+In the INI file, the HTBQueue has to be configured as a packet queue for the desired interfaces as shown in the example below. The example corresponds to the XML configuration presented above.
+
+```INI
+[Config iniHtbExample]
+description = "HTB Configuration example"
+*.host.ppp[0].ppp.queue.typename = "HTBQueue" # Specifies that the HTBQueue is used on ppp[0] PPP Interface of "host"
+*.host.ppp[0].ppp.queue.numQueues = 1 # Specifies the number of packet queues for leaves. Must be equal to the number of leaves in HTB XML
+*.host.ppp[0].ppp.queue.queue[*].typename = "DropTailQueue" # Specifies the packet queue type for leaves. Can be any packet queue available in INET
+*.host.ppp[0].ppp.queue.htbHysterisis = false # Specifies the use of hysterisis for the HTBScheduler. Default false, not tested with true.
+*.host.ppp[0].ppp.queue.htbTreeConfig = xmldoc("htbExample.xml") # Specifies the XML configuration file with the HTB tree structure
+*.host.ppp[0].ppp.queue.scheduler.checkHTBTreeValuesForCorectness = true # Enables checks of burst, cburst, and quantum values for each class in XML HTB tree. If true, incorrect values will result in simulation error on initialization.
+*.host.ppp[0].ppp.queue.scheduler.adjustHTBTreeValuesForCorectness = true # Enables automatic adjustment of burst, cburst, and quantum values. Will only be applied if set to true and checkHTBTreeValuesForCorectness = false
+*.host.ppp[0].ppp.queue.queue[*].packetCapacity = 500 # Specifies the capacity of each leaf queue. Careful if you are specifying packetCapacity for all queues in your simulation. The packet capacity of HTBQueue itself needs to be >= numQueues * packetCapacity of leaf queues.
+*.host.ppp[0].ppp.queue.classifier.defaultGateIndex = 0 # Queue/leaf class index into which packets will be classified if none of the filters match.
+*.host.ppp[0].ppp.queue.classifier.packetFilters ="*" # packetFilters specification same as in ContentBasedClassifier
+*.host.ppp[0].ppp.queue.classifier.packetDataFilters ="destinationPort(1042)" # packetDataFilters specification same as in ContentBasedClassifier. This one means that packets with destination port 1042 will be classified into leaf 0
+
+```
+
+## Verification Results
 
 Plots of simple verification results using UDP and TCP applications coming soon.
 
