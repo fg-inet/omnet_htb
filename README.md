@@ -37,13 +37,48 @@ There are some limitations to the XML configuration and the HTB configuration in
 - Burst, cburst, and quantum cannot be lower than the maximum transmission unit. The queue will throw an error if so configured.
 - queueNum starts at 0. The number of queues (configured in INI) needs to correspond to the number of leafs in HTB.
 - The level needs to correspond to the level within the tree, with 0 being reserved for the leaves. Parent of a class cannot be on the same or lower level than the child!
-- The parent of root needs to be "NULL"
+- The parent of root needs to be "NULL" and root class id needs to be "root"
 - Sum of children's assured rates cannot exceed the assured rate of the parent!
 
 Furthermore, some values can be configured automatically for the classes. These values include each class's burst, cburst, and quantum. The user can also configure those values themselves.
 
-An exemplary XML configuration is shown below (TODO).
-
+An exemplary XML configuration with one inner class and one leaf class is shown below:
+```xml
+<config>
+	<class id="root">
+		<parentId>NULL</parentId>
+		<rate type="int">50000</rate>
+		<ceil type="int">50000</ceil>
+		<burst type="int">6250</burst>
+		<cburst type="int">6250</cburst>
+		<level type="int">2</level>
+		<quantum type="int">1500</quantum>
+		<mbuffer type="int">60</mbuffer>
+	</class>
+	<class id="innerClass0">
+		<parentId>root</parentId>
+		<rate type="int">20000</rate>
+		<ceil type="int">40000</ceil>
+		<burst type="int">2500</burst>
+		<cburst type="int">5000</cburst>
+		<level type="int">1</level>
+		<quantum type="int">1500</quantum>
+		<mbuffer type="int">60</mbuffer>
+	</class>
+	<class id="leafClass0">
+		<parentId>innerClass0</parentId>
+		<rate type="int">3000</rate>
+		<ceil type="int">20000</ceil>
+		<burst type="int">1500</burst>
+		<cburst type="int">2500</cburst>
+		<level type="int">0</level>
+		<quantum type="int">1500</quantum>
+		<mbuffer type="int">60</mbuffer>
+		<priority>0</priority>
+		<queueNum type="int">0</queueNum>
+	</class>
+</config>
+```
 
 ## Verification results
 
