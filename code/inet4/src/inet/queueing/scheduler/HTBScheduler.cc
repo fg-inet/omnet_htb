@@ -112,6 +112,7 @@ HTBScheduler::htbClass *HTBScheduler::createAndAddNewClass(cXMLElement* oneClass
         EV_INFO << "User did not specify cburst. Configuring automatically to: " << cburstTemp << " Bytes." << endl;
     }
 
+
     if (linkDatarate == -1) {
         throw cRuntimeError("Link datarate was -1!");
     }
@@ -156,12 +157,22 @@ HTBScheduler::htbClass *HTBScheduler::createAndAddNewClass(cXMLElement* oneClass
     if (strstr(newClass->name,"inner")) { // INNER
         if (strstr(parentName,"root")) {
             newClass->parent = rootClass;
+            if (rootClass-> burstSize < newClass->burstSize){
+                if (valueCorectnessCheck == true) {
+                 throw cRuntimeError("Class %s burst size is higher than burst size of its parent - root class!", newClass->name);
+                }
+            }
             rootClass->numChildren += 1;
             innerClasses.push_back(newClass);
         } else if (strstr(parentName,"inner")) {
             for (auto innerCl : innerClasses) {
                 if (!strcmp(innerCl->name, parentName)) {
                     newClass->parent = innerCl;
+                    if (innerCl-> burstSize < newClass->burstSize){
+                        if (valueCorectnessCheck == true) {
+                            throw cRuntimeError("Class %s burst size is higher than burst size of its parent - class %s!", newClass->name,innerCl->name);
+                        }
+                    }
                     innerCl->numChildren += 1;
                     innerClasses.push_back(newClass);
                 }
@@ -170,12 +181,23 @@ HTBScheduler::htbClass *HTBScheduler::createAndAddNewClass(cXMLElement* oneClass
     } else if (strstr(newClass->name,"leaf")) { // LEAF
         if (strstr(parentName,"root")) {
             newClass->parent = rootClass;
+            if (rootClass-> burstSize < newClass->burstSize){
+                if (valueCorectnessCheck == true) {
+                 throw cRuntimeError("Class %s burst size is higher than burst size of its parent - root class!", newClass->name);
+                }
+            }
             rootClass->numChildren += 1;
             leafClasses.push_back(newClass);
         } else if (strstr(parentName,"inner")) {
             for (auto innerCl : innerClasses) {
                 if (!strcmp(innerCl->name, parentName)) {
                     newClass->parent = innerCl;
+                    if (innerCl-> burstSize < newClass->burstSize){
+                        if (valueCorectnessCheck == true) {
+                            throw cRuntimeError("Class %s burst size is higher than burst size of its parent - class %s!", newClass->name,innerCl->name);
+                        }
+                    }
+
                     innerCl->numChildren += 1;
                     leafClasses.push_back(newClass);
                 }
@@ -948,7 +970,6 @@ void HTBScheduler::chargeClass(htbClass *leafCl, int borrowLevel, Packet *packet
 
 } // namespace queueing
 } // namespace inet
-
 
 
 
